@@ -1,2 +1,6 @@
 # Ignore all VSCode Folders
 .vscode/*
+
+# Ignore all built folder
+obj/*
+out/*
