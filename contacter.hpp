@@ -37,12 +37,14 @@ class Contacter {
     const bool operator==(const Contacter& other) const;
 
     /* Functions */
-    ContacterErrorCode contact(const std::string userAgent,
-                const std::string url,
-                const std::string target); //sets up the connection
+    ContacterErrorCode contact(const std::wstring userAgent,
+                const std::wstring url,
+                const std::wstring target); //sets up the connection
     
-    ContacterErrorCode obtainData();
-    void severContact();
+    ContacterErrorCode obtainData(); //obtains the data
+    void severContact(); //disconnects the contacter
+
+    std::string getData() const; //gets the underlying data
 
     protected:
     //session, connection, and request HINTERNET handles

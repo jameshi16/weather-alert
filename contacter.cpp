@@ -3,11 +3,16 @@
 #include <algorithm>
 #include <sstream>
 
-ContacterErrorCode Contacter::contact(const std::string userAgent, 
-                        const std::string url,
-                        const std::string target) {
+const bool Contacter::operator==(const Contacter& other) const {
+    return (session == other.session && connect == other.connect 
+            && request == other.request && data == other.data);
+}
+
+ContacterErrorCode Contacter::contact(const std::wstring userAgent, 
+                        const std::wstring url,
+                        const std::wstring target) {
     // Opens a connection to the server
-    session = WinHttpOpen(reinterpret_cast<const wchar_t*>(userAgent.c_str()), 
+    session = WinHttpOpen(userAgent.c_str(), 
                 WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, 
                 WINHTTP_NO_PROXY_NAME,
                 WINHTTP_NO_PROXY_BYPASS, 0);
@@ -18,19 +23,19 @@ ContacterErrorCode Contacter::contact(const std::string userAgent,
 
     // Specifies a web server to connect to.
     connect = WinHttpConnect(session, 
-                            reinterpret_cast<const wchar_t*>(url.c_str()),
-                            INTERNET_DEFAULT_HTTP_PORT, 0);
+                            url.c_str(),
+                            INTERNET_DEFAULT_HTTPS_PORT, 0);
                 
     // Ensure that connection is established
     if (!connect)
         return REJECTED_BY_SERVER;
     
     request = WinHttpOpenRequest(connect, L"GET", 
-                                reinterpret_cast<const wchar_t*>(target.c_str()), 
+                                target.c_str(), 
                                 NULL, 
                                 WINHTTP_NO_REFERER,
                                 WINHTTP_DEFAULT_ACCEPT_TYPES,
-                                0);
+                                WINHTTP_FLAG_SECURE);
 
     // Ensure that the request has been created
     bool requestCompleted = WinHttpSendRequest(request,
@@ -72,7 +77,7 @@ ContacterErrorCode Contacter::obtainData() {
         else {
             std::fill(data, data + dataSize + 1, '\0'); //zeros all the memory
 
-            if (!WinHttpReadData(request, &data, dataSize, &readSize))
+            if (!WinHttpReadData(request, data, dataSize, &readSize))
                 return DATA_DOWNLOAD_FAILED;
             
             dataStream << data;
@@ -88,4 +93,8 @@ void Contacter::severContact() {
     if (request) WinHttpCloseHandle(request);
     if (connect) WinHttpCloseHandle(connect);
     if (session) WinHttpCloseHandle(session);
+}
+
+std::string Contacter::getData() const {
+    return data;
 }
