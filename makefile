@@ -14,7 +14,7 @@ LINKS64_D := $(file < links64_d.txt)
 LIBRARIES64_D := $(file < libraries64_d.txt)
 CPPFILES := $(wildcard *.cpp) $(wildcard */*.cpp)
 OBJFILES := $(addprefix obj/, $(CPPFILES:.cpp=.o))
-DIRTOCREATE := out/ obj/ out/debug32/ out/debug64/ out/release32/ out/release64/ $(dir $(OBJFiles))
+DIRTOCREATE := out/ obj/ out/debug32/ out/debug64/ out/release32/ out/release64/ $(dir $(OBJFILES))
 
 FINAL_LINKS := 
 FINAL_LIBRARIES := 
