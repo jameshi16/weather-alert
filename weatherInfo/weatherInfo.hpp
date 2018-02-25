@@ -6,7 +6,9 @@
 
 /* WeatherInfo is created based off the API for OpenWeatherMap.org, so the data here corresponds to the api there. */
 struct WeatherInfo {
+    WeatherInfo()=default;
     WeatherInfo(JsonDecoder& jDecoder); //construct the weather information from JSON
+    ~WeatherInfo()=default;
 
     std::string getWeather_fancy(); //writes the weather in a fancy fashion and returns it as a string
     void readWeatherData(JsonDecoder& jDecoder);
