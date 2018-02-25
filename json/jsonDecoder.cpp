@@ -26,11 +26,11 @@ void JsonDecoder::decode(std::string string_to_decode) {
     std::stack<int> modes; //the modes. This defines what operation is taking place at the current level.
     //Enums are too troublesome in this case, so we use a mode instead. 0 - first run, 1 - dictionary, 2 - array, 3 - value, 4 - break character
     std::stringstream buffer; //the buffering stream.
-    JsonObject<std::string>& cursor = parentObject; //sets the cursor to the parent object.
+    JsonObject<std::string>* cursor = &parentObject; //sets the cursor to the parent object.
 
     /* Start reading the JSON */
     for (iterator_t&& it = string_to_decode.begin(); it != string_to_decode.end(); std::advance(it, 1)) { //gets an iterator
-        std::cerr << *it << ": Cursor Object Size: " << cursor.objects.size() << " Parent Object Size: " << parentObject.objects.size() << std::endl;
+        std::cerr << *it << ": Cursor Object Size: " << cursor->objects.size() << " Parent Object Size: " << parentObject.objects.size() << std::endl;
         /** Name-Value Detection **/ //Rule: It is a value until proven otherwise
         if (*it == '\"' && modes.size() && modes.top() != 3) { //open double quotes
             modes.push(3); //we start recognizing this as a value
@@ -53,19 +53,19 @@ void JsonDecoder::decode(std::string string_to_decode) {
         }
 
         if (*it == ':' && modes.size() && modes.top() != 3) { //if not in a string, and colon is found
-            cursor.objects.emplace_back(); //creates a new JsonObject at the back of the vector
-            cursor.objects.back().parent = &cursor; //sets the parent.
+            cursor->objects.emplace_back(); //creates a new JsonObject at the back of the vector
+            cursor->objects.back().parent = cursor; //sets the parent.
 
-            cursor = cursor.objects.back(); //cursor is now set to the newly created object
+            cursor = &cursor->objects.back(); //cursor is now set to the newly created object
             buffer.flush(); //syncs the buffer
-            cursor.name = buffer.str(); //puts the string into the name
+            cursor->name = buffer.str(); //puts the string into the name
             buffer.str(""); //clears the buffer
             continue; //aite next
         }
 
         if (*it == ',' && modes.size() && modes.top() == 2) { //if we see a comma and it's part of a list
             buffer.flush(); //flushes the buffer
-            cursor.array.push_back(buffer.str()); //puts the string into the array
+            cursor->array.push_back(buffer.str()); //puts the string into the array
             buffer.str(""); //clears the buffer
 
             continue;
@@ -73,10 +73,10 @@ void JsonDecoder::decode(std::string string_to_decode) {
 
         if (*it == ',' && modes.size() && modes.top() != 3) { //if we see a comma, and it's not part of a list
             buffer.flush(); //flushes the buffer
-            cursor.value = buffer.str(); //puts the string into the value
+            cursor->value = buffer.str(); //puts the string into the value
             buffer.str(""); //clears the buffer
 
-            cursor = *cursor.parent; //goes back to the parent
+            cursor = cursor->parent; //goes back to the parent
             continue;
         }
 
@@ -86,25 +86,25 @@ void JsonDecoder::decode(std::string string_to_decode) {
 
         if (*it == '{' && !modes.size()) { /* Parent Object */
             objectBraces.push(it);
-            cursor.parent = &parentObject; //the parent of the parent object is itself
+            cursor->parent = &parentObject; //the parent of the parent object is itself
             modes.push(1); //top-level operation is 1.
             continue;
         }
 
         if (*it == '{' && modes.size()) { /* Start of objects */
             objectBraces.push(it);
-            cursor.objects.emplace_back(); //inserts a new object at the back of the parent object
-            cursor.objects.back().parent = &cursor; //sets the parent to the cursor json object
-            cursor = cursor.objects.back(); //sets the cursor
+            cursor->objects.emplace_back(); //inserts a new object at the back of the parent object
+            cursor->objects.back().parent = cursor; //sets the parent to the cursor json object
+            cursor = &cursor->objects.back(); //sets the cursor
             modes.push(1); //next operation is object
             continue; //on to the next character
         }
 
         if (*it == '[' && modes.size()) { /* Start of array */
             arrayBraces.push(it);
-            cursor.objects.emplace_back(); //inserts a new object at the back
-            cursor.objects.back().parent = &cursor;
-            cursor = cursor.objects.back(); //set the cursor
+            cursor->objects.emplace_back(); //inserts a new object at the back
+            cursor->objects.back().parent = cursor;
+            cursor = &cursor->objects.back(); //set the cursor
             modes.push(2); //adds the current mode
             continue; //on to the next character
         } else if (*it == '[' && !modes.size()) {
@@ -120,9 +120,9 @@ void JsonDecoder::decode(std::string string_to_decode) {
             }
 
             objectBraces.pop();
-            cursor.value = buffer.str();
+            cursor->value = buffer.str();
             buffer.str("");
-            cursor = *cursor.parent; //goes back to the parent object of the cursor
+            cursor = cursor->parent; //goes back to the parent object of the cursor
             modes.pop(); //mode returns to parent mode
             continue;
         }
@@ -134,9 +134,9 @@ void JsonDecoder::decode(std::string string_to_decode) {
             }
 
             arrayBraces.pop();
-            cursor.value = buffer.str();
+            cursor->value = buffer.str();
             buffer.str("");
-            cursor = *cursor.parent; //goes back to the parent object of the cursor
+            cursor = cursor->parent; //goes back to the parent object of the cursor
             modes.pop(); //mode returns to parent mode
             continue;
         }
