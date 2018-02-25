@@ -30,7 +30,6 @@ void JsonDecoder::decode(std::string string_to_decode) {
 
     /* Start reading the JSON */
     for (iterator_t&& it = string_to_decode.begin(); it != string_to_decode.end(); std::advance(it, 1)) { //gets an iterator
-        std::cerr << *it << ": Cursor Object Size: " << cursor->objects.size() << " Parent Object Size: " << parentObject.objects.size() << std::endl;
         /** Name-Value Detection **/ //Rule: It is a value until proven otherwise
         if (*it == '\"' && modes.size() && modes.top() != 3) { //open double quotes
             modes.push(3); //we start recognizing this as a value
@@ -93,18 +92,15 @@ void JsonDecoder::decode(std::string string_to_decode) {
 
         if (*it == '{' && modes.size()) { /* Start of objects */
             objectBraces.push(it);
-            cursor->objects.emplace_back(); //inserts a new object at the back of the parent object
-            cursor->objects.back().parent = cursor; //sets the parent to the cursor json object
-            cursor = &cursor->objects.back(); //sets the cursor
             modes.push(1); //next operation is object
             continue; //on to the next character
         }
 
         if (*it == '[' && modes.size()) { /* Start of array */
             arrayBraces.push(it);
-            cursor->objects.emplace_back(); //inserts a new object at the back
+            cursor->objects.emplace_back();
             cursor->objects.back().parent = cursor;
-            cursor = &cursor->objects.back(); //set the cursor
+            cursor = &cursor->objects.back();
             modes.push(2); //adds the current mode
             continue; //on to the next character
         } else if (*it == '[' && !modes.size()) {
@@ -122,7 +118,7 @@ void JsonDecoder::decode(std::string string_to_decode) {
             objectBraces.pop();
             cursor->value = buffer.str();
             buffer.str("");
-            cursor = cursor->parent; //goes back to the parent object of the cursor
+            cursor = cursor->parent; //goes back to the parent of the parent.
             modes.pop(); //mode returns to parent mode
             continue;
         }

@@ -16,7 +16,7 @@ struct JsonObject {
 
     JsonObject& operator[](std::string _name) {
         for (auto&& it : objects) { //tries to find the matching name in the object
-            if (it.name == name)
+            if (it.name == _name)
                 return it;
         }
 
