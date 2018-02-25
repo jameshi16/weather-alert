@@ -1,8 +1,8 @@
 # General Makefile for the project
 CXX = g++
-CFLAG = -std=c++17 -m32 --static --static-libstdc++
+CFLAG = -std=c++17 -m32 --static --static-libstdc++ -m32
 CFLAG_D = -std=c++17 -g -Wall -m32
-CFLAG64 = -std=c++17 -m64 --static --static-libstdc++
+CFLAG64 = -std=c++17 -m64 --static --static-libstdc++ -m64
 CFLAG64_D = -std=c++17 -g -Wall -m64
 LINKS := $(file < links.txt)
 LIBRARIES := $(file < libraries.txt)
@@ -14,7 +14,7 @@ LINKS64_D := $(file < links64_d.txt)
 LIBRARIES64_D := $(file < libraries64_d.txt)
 CPPFILES := $(wildcard *.cpp) $(wildcard */*.cpp)
 OBJFILES := $(addprefix obj/, $(CPPFILES:.cpp=.o))
-DIRTOCREATE := out/ obj/ out/debug32/ out/debug64/ out/release32/ out/release64/ $(dir $(OBJFiles))
+DIRTOCREATE := out/ obj/ out/debug32/ out/debug64/ out/release32/ out/release64/ $(dir $(OBJFILES))
 
 FINAL_LINKS := 
 FINAL_LIBRARIES := 
@@ -50,7 +50,7 @@ release64: FINAL_FLAGS := $(CFLAG64)
 release64: out/release64/wa.exe
 
 %/wa.exe: $(OBJFILES)
-	$(CXX) $(FINAL_FLAGS) -o $@ $< $(FINAL_LINKS)
+	$(CXX) $(FINAL_FLAGS) -o $@ $^ $(FINAL_LINKS)
 	mv obj $(dir $@)obj
 	@echo Build Complete.
 

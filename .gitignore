@@ -4,3 +4,7 @@
 # Ignore all built folder
 obj/*
 out/*
+
+# Ignore all links and libraries txt files
+links*.txt
+libraries*.txt
