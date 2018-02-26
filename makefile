@@ -61,4 +61,5 @@ obj/%.o: %.cpp
 	$(CXX) $(FINAL_FLAGS) -o $@ -c $^ $(FINAL_LIBRARIES) -DBUILDNUMBER=$(BUILDNUMBER)
 
 clean:
+	$(file > buildNumber.txt,$(CURR_BUILDNO))
 	$(RM) -r out/ obj/
