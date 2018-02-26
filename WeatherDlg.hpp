@@ -20,7 +20,7 @@ class WeatherDialog {
     private:
     WNDCLASSEX wcex;
     HWND hwnd;
-    LPCTSTR _windowTitle;
+    TCHAR* _windowTitle;
 };
 
 #endif

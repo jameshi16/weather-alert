@@ -1,6 +1,7 @@
 #include "WeatherDlg.hpp"
 
 #include <iostream>
+#include <cstring>
 
 WeatherDialog::WeatherDialog(HINSTANCE hInstance, LPCTSTR windowTitle) {
     /* Setup the WNDCLASSEX object */
@@ -24,7 +25,7 @@ WeatherDialog::WeatherDialog(HINSTANCE hInstance, LPCTSTR windowTitle) {
 
     /* Remember the window title */ //I choose to copy because if someone decided to pass a pointer from a limited lifetime object, I can still store it.
     _windowTitle = new TCHAR[sizeof windowTitle];
-    std::copy(windowTitle, windowTitle + sizeof windowTitle, _windowTitle);
+    std::memcpy(_windowTitle, windowTitle, (sizeof windowTitle) / sizeof(unsigned char)); //you might never know which systems use char as 2 bytes @.@
 }
 
 WeatherDialog::~WeatherDialog() {
