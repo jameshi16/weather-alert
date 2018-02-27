@@ -69,23 +69,12 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     Edit_GetText(hwndAPIEdit, APIKey, size_apikey);
                     Edit_GetText(hwndLOCEdit, Location, size_location);
 
-                    std::string s_APIKey(APIKey);
-                    std::string s_Location(Location);
-
-                    std::cerr << "WA GUI: Setting up with API Key: " << APIKey << " in " << Location << std::endl;
-                    /* Variables to get weather data */
-                    Contacter contact;
-                    JsonDecoder jd;
-
-                    contact.contact(L"JamesLab Softwares", L"api.openweathermap.org", L"/data/2.5/weather?q=" + 
-                                    std::wstring(s_Location.begin(), s_Location.end()) + L"&appid=" + std::wstring(s_APIKey.begin(), s_APIKey.end()));
-                    contact.obtainData();
-                    contact.severContact();
-
-                    jd.decode(contact.getData());
-                    wi.readWeatherData(jd);
-
-                    std::cerr << "Status is: " << wi.weatherName << std::endl;
+                    /* Obtains the WeatherStation within the extra class bytes */
+                    WeatherStation* ws = reinterpret_cast<WeatherStation*>(GetClassLongPtr(hwnd, 0));
+                    if (ws != NULL) {
+                        ws->requestData(std::string(APIKey), std::string(Location));
+                        std::cerr << "Weather Information: " << ws->getWeatherInfo().weatherName << std::endl;
+                    } else std::cerr << "Can't fetch weather information, weather station passed is null." << std::endl;
 
                     delete[] APIKey;
                     delete[] Location;
@@ -108,7 +97,7 @@ WeatherDialog::WeatherDialog(HINSTANCE hInstance, LPCTSTR windowTitle, int nCmdS
     wcex.cbSize         = sizeof(WNDCLASSEX); //size of struct
     wcex.style          = CS_HREDRAW | CS_VREDRAW; //class style. Horizontal Sizing redraw and Vertical Sizing redraw
     wcex.lpfnWndProc    = WeatherDlgProc; //the window procedure
-    wcex.cbClsExtra     = 0; //do I need any extra bytes from the struct?
+    wcex.cbClsExtra     = sizeof(ULONG_PTR); //allocates extra memory to fit the pointer to weather station
     wcex.cbWndExtra     = 0; //do I need any extra bytes for the window?
     wcex.hInstance      = hInstance; //the instance calling the window
     wcex.hIcon          = reinterpret_cast<HICON>(LoadImage(NULL, IDI_APPLICATION, IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
@@ -137,7 +126,7 @@ WeatherDialog::~WeatherDialog() {
 }
 
 //returns false if it can't appear
-bool WeatherDialog::appear(HWND parentWindow) {
+bool WeatherDialog::appear(WeatherStation* ws, HWND parentWindow) {
     hwnd = CreateWindow(wcex.lpszClassName, _windowTitle, 
                         WS_OVERLAPPEDWINDOW,
                         CW_USEDEFAULT, CW_USEDEFAULT,
@@ -151,17 +140,12 @@ bool WeatherDialog::appear(HWND parentWindow) {
         std::cerr << "WA GUI: I could not create the window." << std::endl;
         std::cerr << "WA GUI: Detailed info: " << GetLastError() << std::endl;
         return false;
+    }  else {
+        //Only if the registration of class is successful, store the weather station pointer
+        ULONG_PTR val = SetClassLongPtr(hwnd, 0, reinterpret_cast<ULONG_PTR>(ws)); //passes the pointer
     }
 
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
     return true;
-}
-
-void WeatherDialog::message_loop() {
-    MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
 }

@@ -5,6 +5,8 @@
 #include "windowsx.h"
 #include "tchar.h"
 
+#include "weatherInfo/weatherStation.hpp"
+
 //Member Windows
 enum : short{
     APIKEY_TEXTBOX,
@@ -22,8 +24,7 @@ class WeatherDialog {
     virtual ~WeatherDialog();
 
     //Returns false if it can't appear
-    bool appear(HWND parentWindow = NULL);
-    void message_loop(); //the message loop. Will return false if the loop is exited.
+    bool appear(WeatherStation* ws, HWND parentWindow = NULL);
 
     private:
     WNDCLASSEX wcex; //the class structure
