@@ -11,8 +11,10 @@
 #include "comip.h"
 #include "Unknwn.h"
 
+#include "mfobjects.h"
+
 // Some typedefs for smart pointers
-_COM_SMARTPTR_TYPEDEF(IMFSourceResolver, __uuidof(IMFSourceResolver));
+_COM_SMARTPTR_TYPEDEF(IMFSourceResolver, IID_IMFSourceResolver);
 _COM_SMARTPTR_TYPEDEF(IUnknown, IID_IUnknown);
 _COM_SMARTPTR_TYPEDEF(IMFTopology, IID_IMFTopology);
 _COM_SMARTPTR_TYPEDEF(IMFPresentationDescriptor, IID_IMFPresentationDescriptor);
@@ -62,9 +64,9 @@ class Alerter {
     void playAudio();
 
     protected:
-    HRESULT PlayAudioStream(); //background
+    // HRESULT PlayAudioStream(); //background
     //TODO: Ducking Mode
-    HRESULT PlayExclusiveStream(); //exclusive
+    // HRESULT PlayExclusiveStream(); //exclusive
 
     // So according to the MSDN docs, I need to create my own partial network function.
     // IGN 10/10
@@ -76,7 +78,7 @@ class Alerter {
     AlertReturnCode lastError = SUCCESS; //the last error that the object encountered
     HANDLE alerterCloseEvent = NULL; //the handle that determines if things should stop
 
-    IMFMediaSourcePtr m_pSource(0);
+    IMFMediaSourcePtr m_pSource;
 };
 
 template <>
@@ -98,34 +100,27 @@ bool Alerter::setSoundFile<std::wstring>(std::wstring path) {
     IMFPresentationDescriptorPtr pSourcePD(0); //the presentation descripter
 
     /* Create a Media Session */
-    HRESULT hr = NULL;
+    HRESULT hr = 0;
     //HRESULT hr = CreateSession();
     if (FAILED(hr)) //failed just checks if hr < 0
         return false;
 
     /* Source Resolving */
-    hr = MFCreateSourceResolver(&pSourceResolver); //creates the source resolver
+    hr = CreateMediaSource(path.c_str(), &m_pSource); //creates the source resolver
 
     if (FAILED(hr))
         return false;
-
-    /* Creating the object */
-    hr = pSourceResolver->CreateObjectFromUrl(path.c_str(),
-                                            MF_RESOLUTION_MEDIASOURCE,
-                                            NULL,
-                                            &ObjectType,
-                                            &pSource);
     
     if (FAILED(hr))
         return false;
 
     /* Creating the media source from the object */
-    hr = CreateMediaSource(path.c_str(), &pSource);
+    hr = CreateMediaSource(path.c_str(), &m_pSource);
     if (FAILED(hr))
         return false;
 
     /* Create the presentation descriptor */
-    hr = pSource->CreatePresentationDescriptor(&pSourcePD);
+    hr = m_pSource->CreatePresentationDescriptor(&pSourcePD);
     if (FAILED(hr))
         return false;
 
