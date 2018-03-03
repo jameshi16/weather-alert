@@ -1,8 +1,8 @@
 # General Makefile for the project
 CXX = g++
-CFLAG = -std=c++17 -m32 --static --static-libstdc++
+CFLAG = -std=c++17 -m32 --static --static-libstdc++ -DNDEBUG 
 CFLAG_D = -std=c++17 -g -Wall -m32
-CFLAG64 = -std=c++17 -m64 --static --static-libstdc++
+CFLAG64 = -std=c++17 -m64 --static --static-libstdc++ -DNDEBUG 
 CFLAG64_D = -std=c++17 -g -Wall -m64
 LINKS := $(file < links.txt)
 LIBRARIES := $(file < libraries.txt)

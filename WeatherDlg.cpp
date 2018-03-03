@@ -73,7 +73,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     WeatherStation* ws = reinterpret_cast<WeatherStation*>(GetClassLongPtr(hwnd, 0));
                     if (ws != NULL) {
                         ws->requestData(std::string(APIKey), std::string(Location));
-                        std::cerr << "Weather Information: " << ws->getWeatherInfo().weatherName << std::endl;
+                        //TODO temp: play sound here
                     } else std::cerr << "Can't fetch weather information, weather station passed is null." << std::endl;
 
                     delete[] APIKey;
