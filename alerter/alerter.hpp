@@ -5,6 +5,8 @@
 //#include <filesystem> //exists //enable again when GCC 8.0 is out
 
 #include "windows.h"
+#include "windowsx.h"
+#include "tchar.h"
 #include "Mfidl.h"
 #include "mfapi.h"
 #include "comdef.h"
@@ -26,6 +28,9 @@ _COM_SMARTPTR_TYPEDEF(IMFMediaTypeHandler, IID_IMFMediaTypeHandler);
 _COM_SMARTPTR_TYPEDEF(IMFMediaSession, IID_IMFMediaSession);
 _COM_SMARTPTR_TYPEDEF(IMFMediaEvent, IID_IMFMediaEvent);
 
+//This is the event we are going to use. WM_APP is probably (I'm not sure) the last declaration for WM, so we take the next one
+const UINT WM_APP_PLAYER_EVENT = WM_APP + 1;
+
 enum AlerterMode : short {
     BACKGROUND,
     DUCKING,
@@ -35,7 +40,10 @@ enum AlerterMode : short {
 enum AlertReturnCode : short {
     SUCCESS,
     FILE_NOT_FOUND,
-    UNSUPPORTED_OPERATION
+    UNSUPPORTED_OPERATION,
+    FAILED_TO_PLAY,
+    FAILED_TO_STOP,
+    CANNOT_CHANGE_MODE_WHILE_PLAYING
 };
 
 /**
@@ -47,9 +55,9 @@ enum AlertReturnCode : short {
  * In exclusive mode, the sound will take exclusive control of the default audio device, muting all other volumes to alert the user.
  * The fallback mode will always be background mode.
 **/
-class Alerter : public IMFAsyncCallback {
+class Alerter final : public IMFAsyncCallback {
     public:
-    Alerter();
+    Alerter(HWND eventWindow);
     virtual ~Alerter();
 
     /* Error Handling */
@@ -67,13 +75,15 @@ class Alerter : public IMFAsyncCallback {
     bool setSoundFile_Async(); //TODO: Actually do this later
 
     /* Unified Function to play audio */
-    void playAudio();
+    void playAudio(); //plays the audio
+    void stopAudio(); //stops the audio
 
     /* Callback for BeginGetMethod */
     HRESULT Invoke(IMFAsyncResult *pResult);
 
     protected:
-    // HRESULT PlayAudioStream(); //background
+    /* Media Controls (Individual) */
+    HRESULT PlayAudioStream(); //background
     //TODO: Ducking Mode
     // HRESULT PlayExclusiveStream(); //exclusive
 
@@ -85,22 +95,41 @@ class Alerter : public IMFAsyncCallback {
     HRESULT CreateMediaSinkActivate(IMFStreamDescriptor* pSourceSD, IMFActivate **ppActivate); //creates the activation object for a renderer, based on the stream media type (in this case, audio.)
     HRESULT AddSourceNode(IMFTopology *pTopology, IMFMediaSource *pSource, IMFPresentationDescriptor *pPD, IMFStreamDescriptor *pSD, IMFTopologyNode **ppNode); //adds a node into the topology, partial or not
     HRESULT AddOutputNode(IMFTopology *pTopology, IMFActivate *pActivate, IMFTopologyNode **ppNode); //adds the sink into the topology
-    HRESULT CreateSession();
+    HRESULT CreateSession(); //creates a session
+    HRESULT StopSession(); //stops the session
+
+    /* Event Handling */
+    HRESULT HandleEvent(UINT_PTR pEventPtr); //handles events when the app recieves WM_APP
+    HRESULT OnTopologyStatus(IMFMediaEvent *pEvent); //handles for events that signals chance in topology statuses
+    HRESULT OnPresentationEnded(IMFMediaEvent *pEvent); //handles end of presentation (eof of music file)
+    HRESULT OnNewPresentation(IMFMediaEvent *pEvent); //handles new presentation (new music file)
+    HRESULT OnSessionEvent(IMFMediaEvent *pEvent, MediaEventType meType) {return S_OK;}; //Handle any other session events
+
+    /* Media Controls */
+    HRESULT StartPlayback();
+
+    /* The Shutdown function */
+    HRESULT Shutdown();
 
     private:
     AlerterMode a_mode = BACKGROUND; //the mode of the alerter
     AlertReturnCode lastError = SUCCESS; //the last error that the object encountered
     HANDLE alerterCloseEvent = NULL; //the handle that determines if things should stop
+    HWND m_eventWindow; //the window to post events too
 
     enum MediaState {
-        PRIMED,
+        READY,
+        OPEN_PENDING,
         PLAYING,
         STOP,
+        CLOSING,
         CLOSED
     } m_mediaState = CLOSED;
 
-    IMFMediaSourcePtr m_pSource;
-    IMFMediaSessionPtr m_pSession;
+    IMFMediaSourcePtr m_pSource; //source media
+    IMFMediaSessionPtr m_pSession; //media session
+
+    static unsigned int ref_count = 0; //this class is designed to not be a singleton, unlike the CPlayer class in MSDN. The ref_count is used by Shutdown() to determine if the framework should start.
 };
 
 template <>
@@ -156,8 +185,7 @@ bool Alerter::setSoundFile<std::wstring>(std::wstring path) {
     if (FAILED(hr))
         return hr;
 
-    m_mediaState = PRIMED;
+    m_mediaState = OPEN_PENDING;
     return hr;
 }
-
 #endif
