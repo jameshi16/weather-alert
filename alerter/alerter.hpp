@@ -9,11 +9,12 @@
 #include "tchar.h"
 #include "Mfidl.h"
 #include "mfapi.h"
+#include "mferror.h"
 #include "comdef.h"
 #include "comip.h"
 #include "Unknwn.h"
 
-#include "mfobjects.h"
+const GUID GUID_NULL = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0}}; //my application can't find GUID_NULL, so I'll have to do it like this
 
 // Some typedefs for smart pointers
 _COM_SMARTPTR_TYPEDEF(IMFSourceResolver, IID_IMFSourceResolver);
@@ -30,6 +31,21 @@ _COM_SMARTPTR_TYPEDEF(IMFMediaEvent, IID_IMFMediaEvent);
 
 //This is the event we are going to use. WM_APP is probably (I'm not sure) the last declaration for WM, so we take the next one
 const UINT WM_APP_PLAYER_EVENT = WM_APP + 1;
+
+template <class T>
+HRESULT GetEventObject(IMFMediaEvent* pEvent, T **ppObject) {
+    *ppObject = NULL; //set the output to nothing
+
+    PROPVARIANT var;
+    HRESULT hr = pEvent->GetValue(&var);
+    if (SUCCEEDED(hr)) {
+        if (var.vt == VT_UNKNOWN)
+            hr = var.punkVal->QueryInterface(IID_IMFPresentationDescriptor, reinterpret_cast<void**>(ppObject));
+        else hr = MF_E_INVALIDTYPE;
+        PropVariantClear(&var);
+        return hr;
+    }
+}
 
 enum AlerterMode : short {
     BACKGROUND,
@@ -79,7 +95,7 @@ class Alerter final : public IMFAsyncCallback {
     void stopAudio(); //stops the audio
 
     /* Callback for BeginGetMethod */
-    HRESULT Invoke(IMFAsyncResult *pResult);
+    HRESULT STDMETHODCALLTYPE Invoke(IMFAsyncResult *pResult);
 
     protected:
     /* Media Controls (Individual) */
@@ -94,7 +110,7 @@ class Alerter final : public IMFAsyncCallback {
     HRESULT AddBranchToPartialTopology(IMFTopology *pTopology, IMFMediaSource *pSource, IMFPresentationDescriptor *pPD, DWORD iStream); //each source starts a new branch in the topology. In normal Audio files, there should only be 1.
     HRESULT CreateMediaSinkActivate(IMFStreamDescriptor* pSourceSD, IMFActivate **ppActivate); //creates the activation object for a renderer, based on the stream media type (in this case, audio.)
     HRESULT AddSourceNode(IMFTopology *pTopology, IMFMediaSource *pSource, IMFPresentationDescriptor *pPD, IMFStreamDescriptor *pSD, IMFTopologyNode **ppNode); //adds a node into the topology, partial or not
-    HRESULT AddOutputNode(IMFTopology *pTopology, IMFActivate *pActivate, IMFTopologyNode **ppNode); //adds the sink into the topology
+    HRESULT AddOutputNode(IMFTopology *pTopology, IMFActivate *pActivate, DWORD dwId, IMFTopologyNode **ppNode); //adds the sink into the topology
     HRESULT CreateSession(); //creates a session
     HRESULT StopSession(); //stops the session
 
@@ -129,7 +145,7 @@ class Alerter final : public IMFAsyncCallback {
     IMFMediaSourcePtr m_pSource; //source media
     IMFMediaSessionPtr m_pSession; //media session
 
-    static unsigned int ref_count = 0; //this class is designed to not be a singleton, unlike the CPlayer class in MSDN. The ref_count is used by Shutdown() to determine if the framework should start.
+    static unsigned int ref_count; //this class is designed to not be a singleton, unlike the CPlayer class in MSDN. The ref_count is used by Shutdown() to determine if the framework should start.
 };
 
 template <>
@@ -176,12 +192,12 @@ bool Alerter::setSoundFile<std::wstring>(std::wstring path) {
         return hr;
 
     /* Create a partial topology (I don't have the complete nodes) */
-    hr = CreatePlayBackTopology(m_pSource, pSourcePD, &pTopology);
+    hr = CreatePlaybackTopology(m_pSource, pSourcePD, &pTopology);
     if (FAILED(hr))
         return hr;
 
     /* Set the topology on the media session */
-    hr = m_pSession->SetTopology(0, pTopoogy); //sets the topology of the session
+    hr = m_pSession->SetTopology(0, pTopology); //sets the topology of the session
     if (FAILED(hr))
         return hr;
 

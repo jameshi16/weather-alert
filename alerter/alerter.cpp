@@ -2,6 +2,8 @@
 
 #include <sstream>
 
+unsigned int Alerter::ref_count = 0;
+
 Alerter::Alerter(HWND eventWindow) : m_pSource(0), m_pSession(0) {
     HRESULT hr;
     if (ref_count == 0)
@@ -67,14 +69,14 @@ void Alerter::stopAudio() {
         return;
     }
 
-    if (m_mediaState == NULL) {
+    if (m_pSession == nullptr) {
         lastError = FAILED_TO_STOP;
         return;
     }
 
     HRESULT hr = m_pSession->Stop();
     if (SUCCEEDED(hr))
-        m_medaiaState = STOP;
+        m_mediaState = STOP;
 
     lastError = SUCCESS;
     return;
@@ -94,7 +96,7 @@ HRESULT Alerter::Shutdown() {
     return hr;
 }
 
-HRESULT Alerter::Invoke(IMFAsyncResult *pResult) {
+HRESULT STDMETHODCALLTYPE Alerter::Invoke(IMFAsyncResult *pResult) {
     MediaEventType meType = MEUnknown; //the event type
     IMFMediaEventPtr pEvent(0); //the event itself
 
@@ -124,8 +126,8 @@ HRESULT Alerter::Invoke(IMFAsyncResult *pResult) {
         pEvent->AddRef(); //adds a reference to the event
 
         PostMessage(m_eventWindow, WM_APP_PLAYER_EVENT, 
-                    static_cast<WPARAM>(*pEvent), 
-                    static_cast<LPARAM>(*meType)); //posts a message to the message window
+                    reinterpret_cast<WPARAM>(static_cast<IMFMediaEvent*>(pEvent)), 
+                    static_cast<LPARAM>(meType)); //posts a message to the message window
     }
 
     return S_OK;
@@ -135,7 +137,7 @@ HRESULT Alerter::PlayAudioStream() {
     if (m_mediaState != STOP)
         return -1; //it's an error, and I'm lazy to find a suitable error code
 
-    if (m_pSession == NULL || m_pSource == NULL) 
+    if (m_pSession == nullptr || m_pSource == nullptr) 
         return E_UNEXPECTED;
 
     return StartPlayback();
@@ -235,8 +237,8 @@ HRESULT Alerter::AddBranchToPartialTopology(IMFTopology *pTopology, IMFMediaSour
  * ppActivate - The IMFActivate obejct to write to when the function succeeds.
  **/
 HRESULT Alerter::CreateMediaSinkActivate(IMFStreamDescriptor* pSourceSD, IMFActivate **ppActivate) {
-    IMFMediaTypeHandler pHandler(0);
-    IMFActivate pActivate(0);
+    IMFMediaTypeHandlerPtr pHandler(0);
+    IMFActivatePtr pActivate(0);
 
     HRESULT hr = pSourceSD->GetMediaTypeHandler(&pHandler); //gets the media type handler for the source stream.
     if (FAILED(hr))
@@ -322,7 +324,7 @@ HRESULT Alerter::AddOutputNode(IMFTopology *pTopology, IMFActivate *pActivate, D
 }
 
 HRESULT Alerter::CreateSession() {
-    HRESULT hr = CloseSession(); //closes the old session
+    HRESULT hr = StopSession(); //closes the old session
     if (FAILED(hr))
         return hr;
 
@@ -352,7 +354,7 @@ HRESULT Alerter::StopSession() {
             }
         }
 
-        if (SUCCEDED(hr)) {
+        if (SUCCEEDED(hr)) {
             if (m_pSource)
                 m_pSource->Shutdown(); //shuts down the media source
 
@@ -362,7 +364,7 @@ HRESULT Alerter::StopSession() {
 
         m_pSource.Release();
         m_pSession.Release();
-        m_mediaState = Closed;
+        m_mediaState = CLOSED;
         return hr;
     }
 }
@@ -373,7 +375,7 @@ HRESULT HandleEvent(UINT_PTR pEventPtr) {
 
     IMFMediaEventPtr pEvent(reinterpret_cast<IMFMediaEvent*>(pEventPtr)); //gets the event by casting it back to IMFMediaEvent*
 
-    if (pEvent == NULL)
+    if (pEvent == nullptr)
         return E_POINTER; //pointer error
 
     HRESULT hr = pEvent->GetType(&meType); //obtains the media type
@@ -388,7 +390,7 @@ HRESULT HandleEvent(UINT_PTR pEventPtr) {
         return hr;
 
     switch (meType) {
-        case MESessionTopoloyStatus:
+        case MESessionTopologyStatus:
             //hr = OnTopologyStatus(pEvent);
             break;
 
@@ -412,7 +414,7 @@ HRESULT Alerter::OnTopologyStatus(IMFMediaEvent *pEvent) {
     UINT32 status;
 
     HRESULT hr = pEvent->GetUINT32(MF_EVENT_TOPOLOGY_STATUS, &status); //obtains the value associated with the attribute
-    if (SUCCEEDED(hr) && (status == MF_TOPOLOGYSTATUS_READY)) {
+    if (SUCCEEDED(hr) && (status == MF_TOPOSTATUS_READY)) {
         //The MSDN documentation called some functions here relating to video rendering, but since:
         //1) I don't have a video to show
         //2) _uuid() doesn't work, because GNU GCC business (alternative: actually get the UUID myself, it's probably IID_IMFVideoDisplayControl)
@@ -424,14 +426,14 @@ HRESULT Alerter::OnTopologyStatus(IMFMediaEvent *pEvent) {
 }
 
 HRESULT Alerter::OnPresentationEnded(IMFMediaEvent *pEvent) {
-    m_state = Stopped; //when file finish, it's no longer playing
+    m_mediaState = STOP; //when file finish, it's no longer playing
     return S_OK;
 }
 
 //New presentation = new topology, need to make that
 //According to MSDN, this function should not be called at all, but just in case, we'll put this here.
 HRESULT Alerter::OnNewPresentation(IMFMediaEvent *pEvent) {
-    IMFPresentationDescripterPtr pPD(0);
+    IMFPresentationDescriptorPtr pPD(0);
     IMFTopologyPtr pTopology(0);
 
     HRESULT hr = GetEventObject(pEvent, &pPD); //obtains the event object (a presentation descriptor), which is called by SetObject()
@@ -446,12 +448,12 @@ HRESULT Alerter::OnNewPresentation(IMFMediaEvent *pEvent) {
     if (FAILED(hr))
         return hr;
 
-    m_state = OPEN_PENDING; //pending the openings
+    m_mediaState = OPEN_PENDING; //pending the openings
     return hr;
 }
 
 HRESULT Alerter::StartPlayback() {
-    if (m_pSession == NULL) {
+    if (m_pSession == nullptr) {
         throw std::runtime_error("Media Session is null! Cannot start playback.");
         return ERROR_INVALID_DATA;
     }
@@ -459,7 +461,7 @@ HRESULT Alerter::StartPlayback() {
     PROPVARIANT varStart; //prop variant is essentially: "I can be anything here"
     PropVariantInit(&varStart); //sets varStart to VT_EMPTY (a.k.a doesn't contain anything)
 
-    HRESULT hr = m_pSession->Start(&GUID_NULL, &varStart); //starts the playback. Since varStart is initliazed to VT_EMPTY, this means that it does not have a fixed start
+    HRESULT hr = m_pSession->Start(&GUID_NULL, &varStart); //starts the playback. Since varStart is initliazed to VT_EMPTY, this means that it does not have a fixed start also, 0 because GUID_NULL is zero
     if (SUCCEEDED(hr)) {
         m_mediaState = PLAYING; //can treat as started. If error occurs while starting, m_pSession will throw a event with an error code
     }
