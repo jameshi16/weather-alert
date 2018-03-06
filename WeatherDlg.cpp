@@ -7,20 +7,17 @@
 #include "json.hpp"
 #include "weatherInfo/weatherInfo.hpp"
 
+//for testing purposes
+#include "alerter/alerter.hpp"
+
 LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    PAINTSTRUCT ps; //the paint structure
-    HDC hdc; //device context handle
     static HWND hwndAPIEdit;
     static HWND hwndLOCEdit;
     static HWND hwndButton;
     static WeatherInfo wi;
+    static Alerter alert(hwnd);
 
     switch (uMsg) {
-        /*case WM_PAINT:
-            hdc = BeginPaint(hwnd, &ps); //start painting, obtain the device context
-            EndPaint(hwnd, &ps); //stop painting
-            break;*/
-
         case WM_DESTROY:
             PostQuitMessage(0);
             break;
@@ -73,7 +70,8 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     WeatherStation* ws = reinterpret_cast<WeatherStation*>(GetClassLongPtr(hwnd, 0));
                     if (ws != NULL) {
                         ws->requestData(std::string(APIKey), std::string(Location));
-                        //TODO temp: play sound here
+                        alert.setSoundFile("C:/Users/acer/Music/08 .mp3");
+                        alert.playAudio();
                     } else std::cerr << "Can't fetch weather information, weather station passed is null." << std::endl;
 
                     delete[] APIKey;
@@ -142,7 +140,7 @@ bool WeatherDialog::appear(WeatherStation* ws, HWND parentWindow) {
         return false;
     }  else {
         //Only if the registration of class is successful, store the weather station pointer
-        ULONG_PTR val = SetClassLongPtr(hwnd, 0, reinterpret_cast<ULONG_PTR>(ws)); //passes the pointer
+        SetClassLongPtr(hwnd, 0, reinterpret_cast<ULONG_PTR>(ws)); //passes the pointer
     }
 
     ShowWindow(hwnd, nCmdShow);

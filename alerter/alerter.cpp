@@ -3,6 +3,7 @@
 #include <sstream>
 
 unsigned int Alerter::ref_count = 0;
+const GUID GUID_NULL = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0}}; //my application can't find GUID_NULL, so I'll have to do it like this
 
 Alerter::Alerter(HWND eventWindow) : m_pSource(0), m_pSession(0) {
     HRESULT hr;
@@ -373,6 +374,7 @@ HRESULT Alerter::StopSession() {
         m_mediaState = CLOSED;
         return hr;
     }
+    return hr;
 }
 
 HRESULT HandleEvent(UINT_PTR pEventPtr) {
@@ -477,3 +479,64 @@ HRESULT Alerter::StartPlayback() {
     return hr;
 }
 
+template <typename S>
+bool Alerter::setSoundFile(S path) { //underlying code uses a source resolver, so this will take a while.
+        return setSoundFile(std::wstring(std::begin(path), std::end(path)));
+}
+
+template <>
+bool Alerter::setSoundFile<std::wstring>(std::wstring path) {
+    /* Check if the file exists */ //uncomment in GCC 8.0
+    /*if (!std::filesystem::exists(path)) {
+        lastError = FILE_NOT_FOUND; //sets the last error
+        return false; //function failed
+    }*/
+    if (FILE *file = fopen(std::string(path.begin(), path.end()).c_str(), "r")) { //checks for the existance of the file
+        fclose(file);
+    } else {
+        lastError = FILE_NOT_FOUND; //sets the last error
+        return false;
+    }
+
+    /* Variable Declaration */
+    IMFTopologyPtr pTopology(0); //the topoogy (it's a thing that describe the path of the media source to the media sink through nodes)
+    IMFPresentationDescriptorPtr pSourcePD(0); //the presentation descripter
+
+    /* Create a Media Session */
+    HRESULT hr = CreateSession();
+    if (FAILED(hr)) //failed just checks if hr < 0
+        return hr;
+
+    /* Creating the media source from the object */
+    releaseCallStoreMulti(hr, CreateMediaSource, IMFMediaSource, m_pSource, path.c_str());
+    if (FAILED(hr))
+        return hr;
+
+    /* Create the presentation descriptor */
+    releaseCallStoreSingle(hr, m_pSource->CreatePresentationDescriptor, IMFPresentationDescriptor, pSourcePD);
+    if (FAILED(hr))
+        return hr;
+
+    /* Create a partial topology (I don't have the complete nodes) */
+    releaseCallStoreMulti(hr, CreatePlaybackTopology, IMFTopology, pTopology, m_pSource, pSourcePD);
+    if (FAILED(hr))
+        return hr;
+
+    /* Set the topology on the media session */
+    hr = m_pSession->SetTopology(0, pTopology); //sets the topology of the session
+    if (FAILED(hr))
+        return hr;
+
+    m_mediaState = OPEN_PENDING;
+    return hr;
+}
+
+template <>
+bool Alerter::setSoundFile<const char*>(const char* theArray) {
+    return setSoundFile(std::string(theArray));
+}
+
+template <>
+bool Alerter::setSoundFile<const wchar_t*>(const wchar_t* theArray) {
+    return setSoundFile(std::wstring(theArray));
+}
