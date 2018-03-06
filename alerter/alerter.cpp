@@ -100,7 +100,8 @@ HRESULT STDMETHODCALLTYPE Alerter::Invoke(IMFAsyncResult *pResult) {
     MediaEventType meType = MEUnknown; //the event type
     IMFMediaEventPtr pEvent(0); //the event itself
 
-    HRESULT hr = m_pSession->EndGetEvent(pResult, &pEvent); //obtains the event
+    HRESULT hr = S_OK;
+    releaseCallStoreMulti(hr, m_pSession->EndGetEvent, IMFMediaEvent, pEvent, pResult); //obtains the event
     if (FAILED(hr))
         return hr;
 
@@ -148,7 +149,8 @@ HRESULT Alerter::CreatePlaybackTopology(IMFMediaSource* pSource, IMFPresentation
     unsigned long cSourceStreams = 0;
 
     //Create topology
-    HRESULT hr = MFCreateTopology(&pTopology); 
+    HRESULT hr = S_OK;
+    releaseCallStoreSingle(hr, MFCreateTopology, IMFTopology, pTopology); 
     if (FAILED(hr))
         return hr;
     
@@ -175,17 +177,17 @@ HRESULT Alerter::CreateMediaSource(PCWSTR sURL, IMFMediaSource **ppSource) {
     IUnknownPtr pSource(0); //base interface to most COM interfaces
 
     /* Create the media source */
-    HRESULT hr = MFCreateSourceResolver(&pSourceResolver); //creates the source resolver
+    HRESULT hr = S_OK;
+    releaseCallStoreSingle(hr, MFCreateSourceResolver, IMFSourceResolver, pSourceResolver); //creates the source resolver
 
     if (FAILED(hr))
         return hr;
 
     /* Create the object */
-    hr = pSourceResolver->CreateObjectFromURL(sURL,
+    releaseCallStoreMulti(hr, pSourceResolver->CreateObjectFromURL, IUnknown, pSource, sURL,
                                             MF_RESOLUTION_MEDIASOURCE,
                                             NULL,
-                                            &ObjectType,
-                                            &pSource);
+                                            &ObjectType);
 
     if (FAILED(hr))
         return hr;
@@ -210,20 +212,21 @@ HRESULT Alerter::AddBranchToPartialTopology(IMFTopology *pTopology, IMFMediaSour
 
     BOOL fSelected = FALSE;
 
-    HRESULT hr = pPD->GetStreamDescriptorByIndex(iStream, &fSelected, &pSD); //obtains the stream descripter. fSelected shows whether or not the stream has been selected.
+    HRESULT hr = S_OK;
+    releaseCallStoreMulti(hr, pPD->GetStreamDescriptorByIndex, IMFStreamDescriptor, pSD, iStream, &fSelected); //obtains the stream descripter. fSelected shows whether or not the stream has been selected.
     if (FAILED(hr))
         return hr;
 
     if (fSelected) { //if the stream is selected
-        hr = CreateMediaSinkActivate(pSD, &pSinkActivate); //creates the media sink activation object
+        releaseCallStoreMulti(hr, CreateMediaSinkActivate, IMFActivate, pSinkActivate, pSD); //creates the media sink activation object
         if (FAILED(hr))
             return hr;
 
-        hr = AddSourceNode(pTopology, pSource, pPD, pSD, &pSourceNode); //adds the source node for the stream
+        releaseCallStoreMulti(hr, AddSourceNode, IMFTopologyNode, pSourceNode, pTopology, pSource, pPD, pSD); //adds the source node for the stream
         if (FAILED(hr))
             return hr;
 
-        hr = AddOutputNode(pTopology, pSinkActivate, 0, &pOutputNode); //adds the output node for the renderer
+        releaseCallStoreMulti(hr, AddOutputNode, IMFTopologyNode, pOutputNode, pTopology, pSinkActivate, 0); //adds the output node for the renderer
         if (FAILED(hr))
             return hr;
 
@@ -240,7 +243,8 @@ HRESULT Alerter::CreateMediaSinkActivate(IMFStreamDescriptor* pSourceSD, IMFActi
     IMFMediaTypeHandlerPtr pHandler(0);
     IMFActivatePtr pActivate(0);
 
-    HRESULT hr = pSourceSD->GetMediaTypeHandler(&pHandler); //gets the media type handler for the source stream.
+    HRESULT hr = S_OK;
+    releaseCallStoreSingle(hr, pSourceSD->GetMediaTypeHandler, IMFMediaTypeHandler, pHandler); //gets the media type handler for the source stream.
     if (FAILED(hr))
         return hr;
 
@@ -250,7 +254,7 @@ HRESULT Alerter::CreateMediaSinkActivate(IMFStreamDescriptor* pSourceSD, IMFActi
         return hr;
 
     if (MFMediaType_Audio == guidMajorType) //if the major type is audio
-        hr = MFCreateAudioRendererActivate(&pActivate); //creates the audio activate
+        {releaseCallStoreSingle(hr, MFCreateAudioRendererActivate, IMFActivate, pActivate);} //creates the audio activate
     else { //includes video too by the way
         hr = E_FAIL; //fails the thing. I can't deleselect a stream unless I have the presentation descriptor.
     }
@@ -262,9 +266,10 @@ HRESULT Alerter::CreateMediaSinkActivate(IMFStreamDescriptor* pSourceSD, IMFActi
 
 HRESULT Alerter::AddSourceNode(IMFTopology *pTopology, IMFMediaSource *pSource, IMFPresentationDescriptor *pPD, IMFStreamDescriptor *pSD, IMFTopologyNode **ppNode) {
     IMFTopologyNodePtr pNode(0);
+    HRESULT hr = S_OK;
 
     //Creates an empty node
-    HRESULT hr = MFCreateTopologyNode(MF_TOPOLOGY_SOURCESTREAM_NODE, &pNode);
+    releaseCallStoreMulti(hr, MFCreateTopologyNode, IMFTopologyNode, pNode, MF_TOPOLOGY_SOURCESTREAM_NODE);
     if (FAILED(hr))
         return hr;
 
@@ -293,9 +298,10 @@ HRESULT Alerter::AddSourceNode(IMFTopology *pTopology, IMFMediaSource *pSource, 
 
 HRESULT Alerter::AddOutputNode(IMFTopology *pTopology, IMFActivate *pActivate, DWORD dwId, IMFTopologyNode **ppNode) {
     IMFTopologyNodePtr pNode(0);
+    HRESULT hr = S_OK;
 
     //Creates an empty node
-    HRESULT hr = MFCreateTopologyNode(MF_TOPOLOGY_OUTPUT_NODE, &pNode);
+    releaseCallStoreMulti(hr, MFCreateTopologyNode, IMFTopologyNode, pNode, MF_TOPOLOGY_OUTPUT_NODE);
     if (FAILED(hr))
         return hr;
 
@@ -328,7 +334,7 @@ HRESULT Alerter::CreateSession() {
     if (FAILED(hr))
         return hr;
 
-    hr = MFCreateMediaSession(NULL, &m_pSession); //creates the media session
+    releaseCallStoreMulti(hr, MFCreateMediaSession, IMFMediaSession, m_pSession, NULL); //creates the media session
     if (FAILED(hr))
         return hr;
 
@@ -435,12 +441,13 @@ HRESULT Alerter::OnPresentationEnded(IMFMediaEvent *pEvent) {
 HRESULT Alerter::OnNewPresentation(IMFMediaEvent *pEvent) {
     IMFPresentationDescriptorPtr pPD(0);
     IMFTopologyPtr pTopology(0);
+    HRESULT hr = S_OK;
 
-    HRESULT hr = GetEventObject(pEvent, &pPD); //obtains the event object (a presentation descriptor), which is called by SetObject()
+    releaseCallStoreMulti(hr, GetEventObject, IMFPresentationDescriptor, pPD, pEvent); //obtains the event object (a presentation descriptor), which is called by SetObject()
     if (FAILED(hr))
         return hr;
 
-    hr = CreatePlaybackTopology(m_pSource, pPD, &pTopology); //create a partial topology
+    releaseCallStoreMulti(hr, CreatePlaybackTopology, IMFTopology, pTopology, m_pSource, pPD); //create a partial topology
     if (FAILED(hr))
         return hr;
 

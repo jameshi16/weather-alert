@@ -14,6 +14,21 @@
 #include "comip.h"
 #include "Unknwn.h"
 
+//_com_ptr_t release the pointer when operator& is called. Need to reattach it after we use it.
+// Use this definition if working with pointer to pointer COM interfaces, and the function to be called has multiple arguments
+#define releaseCallStoreMulti(hr, func, ptrType, smart_ptr, ...) \
+        { ptrType** _ptr = &smart_ptr; \
+        hr = func(__VA_ARGS__, _ptr); \
+        smart_ptr.Attach(*_ptr, false); \
+        _ptr = nullptr; }
+
+// Use this definition if workign with poitner to pointer COM interfaces, and the function only accepts the pointer as an argument
+#define releaseCallStoreSingle(hr, func, ptrType, smart_ptr) \
+        { ptrType** _ptr = &smart_ptr; \
+        hr = func(_ptr); \
+        smart_ptr.Attach(*_ptr, false); \
+        _ptr = nullptr; }
+
 const GUID GUID_NULL = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0}}; //my application can't find GUID_NULL, so I'll have to do it like this
 
 // Some typedefs for smart pointers
@@ -167,32 +182,22 @@ bool Alerter::setSoundFile<std::wstring>(std::wstring path) {
     IMFPresentationDescriptorPtr pSourcePD(0); //the presentation descripter
 
     /* Create a Media Session */
-    HRESULT hr = 0;
-    //HRESULT hr = CreateSession();
+    HRESULT hr = CreateSession();
     if (FAILED(hr)) //failed just checks if hr < 0
         return hr;
 
-    /* Source Resolving */
-    hr = CreateMediaSource(path.c_str(), &m_pSource); //creates the source resolver
-
-    if (FAILED(hr))
-        return hr;
-    
-    if (FAILED(hr))
-        return hr;
-
     /* Creating the media source from the object */
-    hr = CreateMediaSource(path.c_str(), &m_pSource);
+    releaseCallStoreMulti(hr, CreateMediaSource, IMFMediaSource, m_pSource, path.c_str());
     if (FAILED(hr))
         return hr;
 
     /* Create the presentation descriptor */
-    hr = m_pSource->CreatePresentationDescriptor(&pSourcePD);
+    releaseCallStoreSingle(hr, m_pSource->CreatePresentationDescriptor, IMFPresentationDescriptor, pSourcePD);
     if (FAILED(hr))
         return hr;
 
     /* Create a partial topology (I don't have the complete nodes) */
-    hr = CreatePlaybackTopology(m_pSource, pSourcePD, &pTopology);
+    releaseCallStoreMulti(hr, CreatePlaybackTopology, IMFTopology, pTopology, m_pSource, pSourcePD);
     if (FAILED(hr))
         return hr;
 
