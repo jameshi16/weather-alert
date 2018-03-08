@@ -70,8 +70,6 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     WeatherStation* ws = reinterpret_cast<WeatherStation*>(GetClassLongPtr(hwnd, 0));
                     if (ws != NULL) {
                         ws->requestData(std::string(APIKey), std::string(Location));
-                        alert.setSoundFile("C:/Users/acer/Music/08 .mp3");
-                        alert.playAudio();
                     } else std::cerr << "Can't fetch weather information, weather station passed is null." << std::endl;
 
                     delete[] APIKey;
@@ -82,6 +80,13 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                 default:
                     return DefWindowProc(hwnd, uMsg, wParam, lParam);
             }
+        
+        case WM_APP_PLAYER_EVENT: {
+            HRESULT hr = alert.HandleEvent(wParam);
+            if (FAILED(hr))
+                std::cerr << "Can't handle alert event." << std::endl;
+            break;
+        }
 
         default:
             return DefWindowProc(hwnd, uMsg, wParam, lParam);

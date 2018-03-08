@@ -136,7 +136,7 @@ HRESULT STDMETHODCALLTYPE Alerter::Invoke(IMFAsyncResult *pResult) {
 }
 
 HRESULT Alerter::PlayAudioStream() {
-    if (m_mediaState != STOP)
+    if (m_mediaState != STOP && m_mediaState != OPEN_PENDING)
         return -1; //it's an error, and I'm lazy to find a suitable error code
 
     if (m_pSession == nullptr || m_pSource == nullptr) 
@@ -377,7 +377,7 @@ HRESULT Alerter::StopSession() {
     return hr;
 }
 
-HRESULT HandleEvent(UINT_PTR pEventPtr) {
+HRESULT Alerter::HandleEvent(UINT_PTR pEventPtr) {
     HRESULT hrStatus = S_OK; //the error code so far
     MediaEventType meType = MEUnknown; //the media event type
 

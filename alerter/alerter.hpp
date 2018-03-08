@@ -116,6 +116,9 @@ class Alerter final : public IMFAsyncCallback {
     /* Callback for BeginGetMethod */
     HRESULT STDMETHODCALLTYPE Invoke(IMFAsyncResult *pResult);
 
+    /* Event Handling*/
+    HRESULT HandleEvent(UINT_PTR pEventPtr); //handles events when the app recieves WM_APP
+
     protected:
     /* Media Controls (Individual) */
     HRESULT PlayAudioStream(); //background
@@ -134,7 +137,6 @@ class Alerter final : public IMFAsyncCallback {
     HRESULT StopSession(); //stops the session
 
     /* Event Handling */
-    HRESULT HandleEvent(UINT_PTR pEventPtr); //handles events when the app recieves WM_APP
     HRESULT OnTopologyStatus(IMFMediaEvent *pEvent); //handles for events that signals chance in topology statuses
     HRESULT OnPresentationEnded(IMFMediaEvent *pEvent); //handles end of presentation (eof of music file)
     HRESULT OnNewPresentation(IMFMediaEvent *pEvent); //handles new presentation (new music file)
