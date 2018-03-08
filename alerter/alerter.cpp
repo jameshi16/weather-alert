@@ -399,19 +399,19 @@ HRESULT Alerter::HandleEvent(UINT_PTR pEventPtr) {
 
     switch (meType) {
         case MESessionTopologyStatus:
-            //hr = OnTopologyStatus(pEvent);
+            hr = OnTopologyStatus(pEvent);
             break;
 
         case MEEndOfPresentation:
-            //hr = OnPresentationEnded(pEvent);
+            hr = OnPresentationEnded(pEvent);
             break;
 
         case MENewPresentation:
-            //hr = OnNewPresentation(pEvent);
+            hr = OnNewPresentation(pEvent);
             break;
 
         default:
-            //hr = OnSessionEvent(pEvent, meType);
+            hr = OnSessionEvent(pEvent, meType);
             break;
     }
 
@@ -427,7 +427,7 @@ HRESULT Alerter::OnTopologyStatus(IMFMediaEvent *pEvent) {
         //1) I don't have a video to show
         //2) _uuid() doesn't work, because GNU GCC business (alternative: actually get the UUID myself, it's probably IID_IMFVideoDisplayControl)
         //so I won't be including them
-        //hr = StartPlayback();
+        hr = StartPlayback();
     }
     
     return hr;
