@@ -11,6 +11,10 @@ bool WeatherStation::requestData(std::wstring APIKey, std::wstring Location) {
     jd = JsonDecoder();
     wi = WeatherInfo();
 
+    /* Caches the APIKey and the Location */
+    m_APIKey = APIKey;
+    m_Location = Location;
+
     /* Connect and obtain data */
     if (contact.contact(L"JamesLab Softwares", //agent
                         OPENWEATHERMAP_URL, //url
@@ -35,6 +39,12 @@ bool WeatherStation::requestData(std::wstring APIKey, std::wstring Location) {
     }
 
     return true; //read success!
+}
+
+bool WeatherStation::requestData() noexcept(false) {
+    if (m_APIKey.empty() || m_Location.empty())
+        throw std::runtime_error("One or both cached values are empty. Execution cannot continue.");
+    return requestData(m_APIKey, m_Location);
 }
 
 WeatherInfo WeatherStation::getWeatherInfo() {

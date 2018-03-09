@@ -8,9 +8,8 @@
 #include "WeatherDlg.hpp"
 
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
-    WeatherStation ws;
     WeatherDialog wd(hInstance, _T("Weather Alert"), nShowCmd);
-    wd.appear(&ws);
+    wd.appear();
     
 
     /** The Message Loop **/

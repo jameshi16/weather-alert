@@ -9,13 +9,13 @@
 
 //for testing purposes
 #include "alerter/alerter.hpp"
+#include "reporter/reporter.hpp"
 
 LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hwndAPIEdit;
     static HWND hwndLOCEdit;
     static HWND hwndButton;
-    static WeatherInfo wi;
-    static Alerter alert(hwnd);
+    static Reporter* reporter = nullptr;
 
     switch (uMsg) {
         case WM_DESTROY:
@@ -66,11 +66,12 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     Edit_GetText(hwndAPIEdit, APIKey, size_apikey);
                     Edit_GetText(hwndLOCEdit, Location, size_location);
 
-                    /* Obtains the WeatherStation within the extra class bytes */
-                    WeatherStation* ws = reinterpret_cast<WeatherStation*>(GetClassLongPtr(hwnd, 0));
-                    if (ws != NULL) {
-                        ws->requestData(std::string(APIKey), std::string(Location));
-                    } else std::cerr << "Can't fetch weather information, weather station passed is null." << std::endl;
+                    /* Creates a new WeatherStation object */
+                    WeatherStation ws;
+                    ws.setAPIKey(std::basic_string<TCHAR>(APIKey));
+                    ws.setLocation(std::basic_string<TCHAR>(Location));
+                    reporter = new Reporter(ws, Alerter(hwnd));
+                    reporter->start(300); //allows the thing to sleep for 5 minutes
 
                     delete[] APIKey;
                     delete[] Location;
@@ -82,7 +83,8 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             }
         
         case WM_APP_PLAYER_EVENT: {
-            HRESULT hr = alert.HandleEvent(wParam);
+            HRESULT hr = reporter->getAlerter()->HandleEvent(wParam);
+
             if (FAILED(hr))
                 std::cerr << "Can't handle alert event." << std::endl;
             break;
@@ -100,7 +102,7 @@ WeatherDialog::WeatherDialog(HINSTANCE hInstance, LPCTSTR windowTitle, int nCmdS
     wcex.cbSize         = sizeof(WNDCLASSEX); //size of struct
     wcex.style          = CS_HREDRAW | CS_VREDRAW; //class style. Horizontal Sizing redraw and Vertical Sizing redraw
     wcex.lpfnWndProc    = WeatherDlgProc; //the window procedure
-    wcex.cbClsExtra     = sizeof(ULONG_PTR); //allocates extra memory to fit the pointer to weather station
+    wcex.cbClsExtra     = 0; //do not need extra bytes
     wcex.cbWndExtra     = 0; //do I need any extra bytes for the window?
     wcex.hInstance      = hInstance; //the instance calling the window
     wcex.hIcon          = reinterpret_cast<HICON>(LoadImage(NULL, IDI_APPLICATION, IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
@@ -129,7 +131,7 @@ WeatherDialog::~WeatherDialog() {
 }
 
 //returns false if it can't appear
-bool WeatherDialog::appear(WeatherStation* ws, HWND parentWindow) {
+bool WeatherDialog::appear(HWND parentWindow) {
     hwnd = CreateWindow(wcex.lpszClassName, _windowTitle, 
                         WS_OVERLAPPEDWINDOW,
                         CW_USEDEFAULT, CW_USEDEFAULT,
@@ -143,9 +145,6 @@ bool WeatherDialog::appear(WeatherStation* ws, HWND parentWindow) {
         std::cerr << "WA GUI: I could not create the window." << std::endl;
         std::cerr << "WA GUI: Detailed info: " << GetLastError() << std::endl;
         return false;
-    }  else {
-        //Only if the registration of class is successful, store the weather station pointer
-        SetClassLongPtr(hwnd, 0, reinterpret_cast<ULONG_PTR>(ws)); //passes the pointer
     }
 
     ShowWindow(hwnd, nCmdShow);

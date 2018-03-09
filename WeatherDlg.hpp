@@ -24,7 +24,7 @@ class WeatherDialog {
     virtual ~WeatherDialog();
 
     //Returns false if it can't appear
-    bool appear(WeatherStation* ws, HWND parentWindow = NULL);
+    bool appear(HWND parentWindow = NULL);
 
     private:
     WNDCLASSEX wcex; //the class structure
