@@ -5,6 +5,7 @@
 #include "../alerter/alerter.hpp"
 #include <string> //for wstring
 #include <atomic> //for atomic bool, and unsigned long long
+#include <condition_variable> //for a condition variable, for the worker thread to exit while sleeping
 #include <thread> //for threading
 #include <mutex> //for thread locking
 
@@ -19,7 +20,7 @@ class Reporter {
 
     Reporter(const WeatherStation& ws, const Alerter& alert);
     Reporter(const Reporter&)=delete;
-    virtual ~Reporter()=default;
+    virtual ~Reporter();
 
     void start(unsigned long long sleepSeconds); //returns immediately. Starts the reporter.
     void stop(); //returns immediately. Stops the reporter.
@@ -41,10 +42,12 @@ class Reporter {
 
     std::atomic_ullong m_sleepSeconds; //amount of seconds before cycle() does something again
     std::atomic_bool m_break; //whether or not reporter should cycle
-    std::atomic_bool m_reporterStatus; //cycle's way of telling if it has started or stopped. true = started, false = stopped
+    std::atomic_bool m_reporterStatus; //whether or not the reporter thread is running
+    std::condition_variable m_cvReporterStatus; //used to notify cv if it should act upon a task immediately (i.e. stop sleeping)
 
     std::thread threadedCycle; //the thread running cycle()
     std::mutex lock;
+    std::mutex m_mutexReporterStatus; //used to notify cv if it should act upon a task immediately (i.e. stop sleeping)
 };
 
 #endif

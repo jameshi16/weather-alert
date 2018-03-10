@@ -104,12 +104,13 @@ void Alerter::stopAudio() {
 HRESULT Alerter::Shutdown() {
     HRESULT hr = StopSession(); //closes the session
     
-    if (ref_count == 1)
+    if (ref_count == 1) {
         MFShutdown(); //shuts down the platform
 
-    if (alerterCloseEvent) {
-        CloseHandle(alerterCloseEvent); //closes the handle
-        alerterCloseEvent = NULL;
+        if (alerterCloseEvent) {
+            CloseHandle(alerterCloseEvent); //closes the handle
+            alerterCloseEvent = NULL;
+        }
     }
 
     return hr;
