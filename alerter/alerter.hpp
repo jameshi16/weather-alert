@@ -95,7 +95,8 @@ enum AlertReturnCode : short {
 class Alerter final : public IMFAsyncCallback {
     public:
     Alerter(HWND eventWindow);
-    virtual ~Alerter();
+    Alerter(const Alerter&);
+    ~Alerter();
 
     /* Error Handling */
     AlertReturnCode getLastError(); //allows the user to obtain the last error

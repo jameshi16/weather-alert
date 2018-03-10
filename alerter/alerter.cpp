@@ -1,6 +1,7 @@
 #include "alerter.hpp"
 
 #include <sstream>
+#include <cstdlib> //exit
 
 unsigned int Alerter::ref_count = 0;
 const GUID GUID_NULL = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0}}; //my application can't find GUID_NULL, so I'll have to do it like this
@@ -18,10 +19,27 @@ Alerter::Alerter(HWND eventWindow) : m_pSource(0), m_pSession(0) {
             throw std::runtime_error(std::string(ss.str().c_str()));
         }
 
-        eventWindow = m_eventWindow;
+        m_eventWindow = eventWindow;
     }
 
     ref_count++;
+}
+
+//It is *impossible* for this to be called while ref_count is 0.
+//Exit immediately if ref_count is 0 while this is called.
+Alerter::Alerter(const Alerter& other) : Alerter(other.m_eventWindow) {
+    if (ref_count == 0) {
+        throw std::runtime_error("Copy constructor of Alerter called while ref_count is 0.");
+        std::exit(-1);
+    }
+
+    this->a_mode = other.a_mode;
+    this->lastError = other.lastError;
+    this->alerterCloseEvent = other.alerterCloseEvent;
+    this->m_eventWindow = other.m_eventWindow;
+    this->m_mediaState = other.m_mediaState;
+    this->m_pSource = other.m_pSource;
+    this->m_pSession = other.m_pSession;
 }
 
 Alerter::~Alerter() {
