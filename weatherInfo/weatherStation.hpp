@@ -22,7 +22,7 @@ struct WeatherStation {
     void setLocation(std::wstring Location) {m_Location = Location;}
 
     void setAPIKey(std::string APIKey) {setAPIKey(std::wstring(APIKey.begin(), APIKey.end()));}
-    void setLocation(std::string Location) {setAPIKey(std::wstring(Location.begin(), Location.end()));}
+    void setLocation(std::string Location) {setLocation(std::wstring(Location.begin(), Location.end()));}
 
     std::wstring getAPIKey() const {return m_APIKey;}
     std::wstring getLocation() const {return m_Location;}
