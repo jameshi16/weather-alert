@@ -30,6 +30,13 @@ bool WeatherStation::requestData(std::wstring APIKey, std::wstring Location) {
     /* Decodes data */
     jd.decode(contact.getData()); //decodes the data. TODO: This is incomplete, JsonDecoder has not much error handling yet.
 
+    #ifndef NDEBUG
+    if (Location == L"debug:rain")
+        wi.weatherName = "Rain";
+    if (Location == L"debug:noRain")
+        wi.weatherName = "Sunny";
+    #endif
+
     /* Copies data to useful structure */
     try {
         wi.readWeatherData(jd); //reads the weather data from the decoded json.
