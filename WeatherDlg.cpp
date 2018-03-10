@@ -19,6 +19,8 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
     switch (uMsg) {
         case WM_DESTROY:
+            if (reporter == nullptr)
+                delete reporter;
             PostQuitMessage(0);
             break;
 
@@ -70,6 +72,9 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     WeatherStation ws;
                     ws.setAPIKey(std::basic_string<TCHAR>(APIKey));
                     ws.setLocation(std::basic_string<TCHAR>(Location));
+                    if (reporter != nullptr)
+                        delete reporter; //deletes the old pointer
+
                     reporter = new Reporter(ws, Alerter(hwnd));
                     reporter->start(300); //allows the thing to sleep for 5 minutes
 
@@ -84,6 +89,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         
         case WM_APP_PLAYER_EVENT: {
             HRESULT hr = reporter->getAlerter()->HandleEvent(wParam);
+            reporter->releaseLock();
 
             if (FAILED(hr))
                 std::cerr << "Can't handle alert event." << std::endl;
