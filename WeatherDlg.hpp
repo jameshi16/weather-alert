@@ -8,10 +8,12 @@
 #include "weatherInfo/weatherStation.hpp"
 
 //Member Windows
-enum : short{
+enum : WORD {
     APIKEY_TEXTBOX,
     LOCATION_TEXTBOX,
-    BUTTON
+    BUTTON_SET,
+    BUTTON_HIDE,
+    SYSTEM_TRAY
 };
 
 // The procedure function for this window

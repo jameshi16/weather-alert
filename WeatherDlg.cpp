@@ -15,6 +15,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     static HWND hwndAPIEdit;
     static HWND hwndLOCEdit;
     static HWND hwndButton;
+    static HWND hwndHideButton;
     static Reporter* reporter = nullptr;
 
     switch (uMsg) {
@@ -28,7 +29,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             hwndAPIEdit = CreateWindowEx(0, _T("EDIT"),
                                         NULL,
                                         WS_CHILD | WS_VISIBLE | ES_LEFT,
-                                        0, 0, 500, 20, 
+                                        0, 10, 500, 20, 
                                         hwnd,
                                         (HMENU) APIKEY_TEXTBOX,
                                         (HINSTANCE) GetWindowLong(hwnd, GWL_HINSTANCE),
@@ -37,7 +38,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             hwndLOCEdit = CreateWindowEx(0, _T("EDIT"),
                                         NULL,
                                         WS_CHILD | WS_VISIBLE | ES_LEFT,
-                                        0, 20, 500, 20,
+                                        0, 30, 500, 20,
                                         hwnd,
                                         (HMENU) LOCATION_TEXTBOX,
                                         (HINSTANCE) GetWindowLong(hwnd, GWL_HINSTANCE),
@@ -46,11 +47,20 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             hwndButton = CreateWindow(_T("BUTTON"),
                                     _T("Set"),
                                     WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                                    10, 40, 100, 20,
+                                    10, 50, 100, 20,
                                     hwnd,
-                                    NULL,
+                                    (HMENU) BUTTON_SET,
                                     (HINSTANCE) GetWindowLong(hwnd, GWL_HINSTANCE),
                                     NULL);
+
+            hwndHideButton = CreateWindow(_T("BUTTON"),
+                                        _T("Hide"),
+                                        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+                                        380, 0, 100, 20,
+                                        hwnd,
+                                        (HMENU) BUTTON_HIDE,
+                                        (HINSTANCE) GetWindowLong(hwnd, GWL_HINSTANCE),
+                                        NULL);
 
             SendMessage(hwndAPIEdit, WM_SETTEXT, 0, (LPARAM) _T("API Key here"));
             SendMessage(hwndLOCEdit, WM_SETTEXT, 0, (LPARAM) _T("Location here"));
@@ -58,7 +68,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
         case WM_COMMAND:
             switch (wParam) {
-                case BN_CLICKED: {
+                case BN_CLICKED | BUTTON_SET: {
                     const int size_apikey = Edit_GetTextLength(hwndAPIEdit) + 1;
                     const int size_location = Edit_GetTextLength(hwndLOCEdit) + 1;
 
@@ -83,13 +93,27 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     break;
                 }
 
+                case BN_CLICKED | BUTTON_HIDE: {
+                    ShowWindow(hwnd, SW_HIDE); //hide the window (ShowWindow is mistakenly a verb)
+                    NOTIFYICONDATA nid; //the notification icon data object
+
+                    nid.cbSize = sizeof(NOTIFYICONDATA);
+                    nid.hWnd = hwnd;
+                    nid.uID = SYSTEM_TRAY;
+                    nid.uFlags = NIF_ICON;
+                    nid.hIcon = reinterpret_cast<HICON>(LoadImage(NULL, IDI_APPLICATION, IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
+
+                    if (!Shell_NotifyIcon(NIM_ADD, &nid))
+                        std::cerr << "Unable to create system tray icon." << std::endl;
+                    break;
+                }
+
                 default:
                     return DefWindowProc(hwnd, uMsg, wParam, lParam);
-            }
+            } break;
         
         case WM_APP_PLAYER_EVENT: {
-            HRESULT hr = reporter->getAlerter()->HandleEvent(wParam);
-            reporter->releaseLock();
+            HRESULT hr = reporter->HandleEvent(wParam);
 
             if (FAILED(hr))
                 std::cerr << "Can't handle alert event." << std::endl;
@@ -141,7 +165,7 @@ bool WeatherDialog::appear(HWND parentWindow) {
     hwnd = CreateWindow(wcex.lpszClassName, _windowTitle, 
                         WS_OVERLAPPEDWINDOW,
                         CW_USEDEFAULT, CW_USEDEFAULT,
-                        500, 100,
+                        500, 110,
                         parentWindow,
                         NULL,
                         wcex.hInstance,
