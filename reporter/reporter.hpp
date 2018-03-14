@@ -28,10 +28,7 @@ class Reporter {
     bool hasStarted() {return m_reporterStatus;}
     bool hasStopped() {return !m_reporterStatus;}
 
-    Alerter* getAlerter(); //locks the reporter from accessing alert and weather station. Use releaseLock after complete
-    WeatherStation* getWeatherStation(); //locks the reporter from accessign alert and weather station. Use releaseLock after complete
-
-    void releaseLock();
+    HRESULT HandleEvent(UINT_PTR pEventPtr); //passes the event handling to the underlying alerter
 
     protected:
     void cycle() noexcept;
@@ -46,7 +43,7 @@ class Reporter {
     std::condition_variable m_cvReporterStatus; //used to notify cv if it should act upon a task immediately (i.e. stop sleeping)
 
     std::thread threadedCycle; //the thread running cycle()
-    std::mutex lock;
+    std::mutex m_alertLock;
     std::mutex m_mutexReporterStatus; //used to notify cv if it should act upon a task immediately (i.e. stop sleeping)
 };
 

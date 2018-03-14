@@ -28,18 +28,9 @@ void Reporter::stop() {
     m_cvReporterStatus.notify_all(); //notifies cycle to break immediately
 }
 
-Alerter* Reporter::getAlerter() {
-    lock.lock();
-    return &m_alert;
-}
-
-WeatherStation* Reporter::getWeatherStation() {
-    lock.lock();
-    return &m_ws;
-}
-
-void Reporter::releaseLock() {
-    lock.unlock();
+HRESULT Reporter::HandleEvent(UINT_PTR pEventPtr) {
+    std::lock_guard<std::mutex> lg(m_alertLock);
+    return m_alert.HandleEvent(pEventPtr);
 }
 
 void Reporter::cycle() noexcept {
