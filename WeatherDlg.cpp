@@ -6,9 +6,6 @@
 #include "contacter.hpp"
 #include "json.hpp"
 #include "weatherInfo/weatherInfo.hpp"
-
-//for testing purposes
-#include "alerter/alerter.hpp"
 #include "reporter/reporter.hpp"
 
 LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -101,7 +98,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     nid.hWnd = hwnd;
                     nid.uID = SYSTEM_TRAY;
                     nid.uFlags = NIF_ICON;
-                    nid.hIcon = reinterpret_cast<HICON>(LoadImage(NULL, IDI_APPLICATION, IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
+                    nid.hIcon = reinterpret_cast<HICON>(LoadImage(reinterpret_cast<HINSTANCE>(GetWindowLong(hwnd, GWL_HINSTANCE)), "appIcon", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
 
                     if (!Shell_NotifyIcon(NIM_ADD, &nid))
                         std::cerr << "Unable to create system tray icon." << std::endl;
@@ -135,7 +132,7 @@ WeatherDialog::WeatherDialog(HINSTANCE hInstance, LPCTSTR windowTitle, int nCmdS
     wcex.cbClsExtra     = 0; //do not need extra bytes
     wcex.cbWndExtra     = 0; //do I need any extra bytes for the window?
     wcex.hInstance      = hInstance; //the instance calling the window
-    wcex.hIcon          = reinterpret_cast<HICON>(LoadImage(NULL, IDI_APPLICATION, IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
+    wcex.hIcon          = reinterpret_cast<HICON>(LoadImage(hInstance, "appIcon", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
     wcex.hCursor        = reinterpret_cast<HCURSOR>(LoadImage(NULL, IDC_ARROW, IMAGE_CURSOR, 0, 0, LR_DEFAULTSIZE));
     wcex.hbrBackground  = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     wcex.lpszMenuName   = NULL; //no default menu

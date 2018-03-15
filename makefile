@@ -13,7 +13,7 @@ LIBRARIES64 := $(file < libraries64.txt)
 LINKS64_D := $(file < links64_d.txt)
 LIBRARIES64_D := $(file < libraries64_d.txt)
 CPPFILES := $(wildcard *.cpp) $(wildcard */*.cpp)
-OBJFILES := $(addprefix obj/, $(CPPFILES:.cpp=.o))
+OBJFILES := $(addprefix obj/, $(CPPFILES:.cpp=.o)) obj/resource.o
 DIRTOCREATE := out/ obj/ out/debug32/ out/debug64/ out/release32/ out/release64/ $(dir $(OBJFILES))
 CURR_BUILDNO := $(file < buildNumber.txt)
 BUILDNUMBER := $(shell expr $(CURR_BUILDNO) + 1)
@@ -59,6 +59,9 @@ release64: out/release64/wa.exe
 
 obj/%.o: %.cpp
 	$(CXX) $(FINAL_FLAGS) -o $@ -c $^ $(FINAL_LIBRARIES) -DBUILDNUMBER=$(BUILDNUMBER)
+
+obj/resource.o: resource.rc
+	windres -i $< -o $@
 
 clean:
 	$(file > buildNumber.txt,$(CURR_BUILDNO))

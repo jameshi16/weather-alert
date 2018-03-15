@@ -11,3 +11,6 @@ libraries*.txt
 
 # Ignore the build number
 buildNumber.txt
+
+# Ignore all icon files
+*.ico
