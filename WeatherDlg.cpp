@@ -3,6 +3,8 @@
 #include <iostream>
 #include <cstring>
 
+#include "Shellapi.h"
+
 #include "contacter.hpp"
 #include "json.hpp"
 #include "weatherInfo/weatherInfo.hpp"
@@ -97,7 +99,9 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     nid.cbSize = sizeof(NOTIFYICONDATA);
                     nid.hWnd = hwnd;
                     nid.uID = SYSTEM_TRAY;
-                    nid.uFlags = NIF_ICON;
+                    nid.uFlags = NIF_ICON | NIF_MESSAGE;
+                    nid.uCallbackMessage = WM_SYSTEMTRAY;
+                    nid.uVersion = 4;
                     nid.hIcon = reinterpret_cast<HICON>(LoadImage(reinterpret_cast<HINSTANCE>(GetWindowLong(hwnd, GWL_HINSTANCE)), "appIcon", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
 
                     if (!Shell_NotifyIcon(NIM_ADD, &nid))
@@ -114,6 +118,20 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
             if (FAILED(hr))
                 std::cerr << "Can't handle alert event." << std::endl;
+            break;
+        }
+
+        case WM_SYSTEMTRAY: {
+            if (LOWORD(lParam) == WM_LBUTTONDBLCLK) {
+                NOTIFYICONDATA nid = {sizeof(NOTIFYICONDATA),
+                                    hwnd,
+                                    SYSTEM_TRAY};
+
+                if (!Shell_NotifyIcon(NIM_DELETE, &nid))
+                    std::cerr << "Deleting of the notification icon failed!" << std::endl;
+
+                ShowWindow(hwnd, SW_SHOW);
+            }
             break;
         }
 

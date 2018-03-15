@@ -16,6 +16,8 @@ enum : WORD {
     SYSTEM_TRAY
 };
 
+const UINT WM_SYSTEMTRAY = 0x401;
+
 // The procedure function for this window
 extern LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
