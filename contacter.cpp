@@ -25,7 +25,7 @@ ContacterErrorCode Contacter::contact(const std::wstring userAgent,
     connect = WinHttpConnect(session, 
                             url.c_str(),
                             INTERNET_DEFAULT_HTTPS_PORT, 0);
-                
+
     // Ensure that connection is established
     if (!connect)
         return REJECTED_BY_SERVER;

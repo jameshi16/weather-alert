@@ -1,5 +1,3 @@
-#define PROTOTYPE
-
 // The prototype compilation unit. I used this to see if I am able to contact Open Weather Map effectively.
 #ifdef PROTOTYPE
 
