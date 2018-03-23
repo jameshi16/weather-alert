@@ -2,14 +2,14 @@
 
 #include <sstream>
 #include <cstdlib> //exit
+#include <iostream> //cerr
 
 unsigned int Alerter::ref_count = 0;
 const GUID GUID_NULL = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0}}; //my application can't find GUID_NULL, so I'll have to do it like this
 
 Alerter::Alerter(HWND eventWindow) : m_pSource(0), m_pSession(0) {
     HRESULT hr;
-    if (ref_count == 0)
-        hr = MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET); //starts up MF without sockets.
+    hr = MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET); //starts up MF without sockets.
 
     if (SUCCEEDED(hr)) {
         alerterCloseEvent = CreateEvent(NULL, FALSE, FALSE, NULL); //not inheritble, auto-reset, no signal, nameless
@@ -27,19 +27,17 @@ Alerter::Alerter(HWND eventWindow) : m_pSource(0), m_pSession(0) {
 
 //It is *impossible* for this to be called while ref_count is 0.
 //Exit immediately if ref_count is 0 while this is called.
-Alerter::Alerter(const Alerter& other) : Alerter(other.m_eventWindow) {
+Alerter::Alerter(Alerter&& other) : Alerter(other.m_eventWindow) {
     if (ref_count == 0) {
-        throw std::runtime_error("Copy constructor of Alerter called while ref_count is 0.");
+        throw std::runtime_error("Move constructor of Alerter called while ref_count is 0.");
         std::exit(-1);
     }
 
     this->a_mode = other.a_mode;
     this->lastError = other.lastError;
-    this->alerterCloseEvent = other.alerterCloseEvent;
-    this->m_eventWindow = other.m_eventWindow;
     this->m_mediaState = other.m_mediaState;
-    this->m_pSource = other.m_pSource;
-    this->m_pSession = other.m_pSession;
+    this->m_pSource.Attach(other.m_pSource.Detach());
+    this->m_pSession.Attach(other.m_pSession.Detach());
 }
 
 Alerter::~Alerter() {
@@ -103,14 +101,12 @@ void Alerter::stopAudio() {
 
 HRESULT Alerter::Shutdown() {
     HRESULT hr = StopSession(); //closes the session
-    
-    if (ref_count == 1) {
-        MFShutdown(); //shuts down the platform
 
-        if (alerterCloseEvent) {
-            CloseHandle(alerterCloseEvent); //closes the handle
-            alerterCloseEvent = NULL;
-        }
+    MFShutdown(); //shuts down the platform
+
+    if (alerterCloseEvent) {
+        CloseHandle(alerterCloseEvent); //closes the handle
+        alerterCloseEvent = NULL;
     }
 
     return hr;
@@ -121,7 +117,7 @@ HRESULT STDMETHODCALLTYPE Alerter::Invoke(IMFAsyncResult *pResult) {
     IMFMediaEventPtr pEvent(0); //the event itself
 
     HRESULT hr = S_OK;
-    releaseCallStoreMulti(hr, m_pSession->EndGetEvent, IMFMediaEvent, pEvent, pResult); //obtains the event
+    hr = m_pSession->EndGetEvent(pResult, &pEvent);//obtains the event
     if (FAILED(hr))
         return hr;
 
@@ -170,7 +166,7 @@ HRESULT Alerter::CreatePlaybackTopology(IMFMediaSource* pSource, IMFPresentation
 
     //Create topology
     HRESULT hr = S_OK;
-    releaseCallStoreSingle(hr, MFCreateTopology, IMFTopology, pTopology); 
+    hr = MFCreateTopology(&pTopology);
     if (FAILED(hr))
         return hr;
     
@@ -198,16 +194,13 @@ HRESULT Alerter::CreateMediaSource(PCWSTR sURL, IMFMediaSource **ppSource) {
 
     /* Create the media source */
     HRESULT hr = S_OK;
-    releaseCallStoreSingle(hr, MFCreateSourceResolver, IMFSourceResolver, pSourceResolver); //creates the source resolver
+    hr = MFCreateSourceResolver(&pSourceResolver); //creates the source resolver
 
     if (FAILED(hr))
         return hr;
 
     /* Create the object */
-    releaseCallStoreMulti(hr, pSourceResolver->CreateObjectFromURL, IUnknown, pSource, sURL,
-                                            MF_RESOLUTION_MEDIASOURCE,
-                                            NULL,
-                                            &ObjectType);
+    hr = pSourceResolver->CreateObjectFromURL(sURL, MF_RESOLUTION_MEDIASOURCE, NULL, &ObjectType, &pSource);
 
     if (FAILED(hr))
         return hr;
@@ -233,20 +226,20 @@ HRESULT Alerter::AddBranchToPartialTopology(IMFTopology *pTopology, IMFMediaSour
     BOOL fSelected = FALSE;
 
     HRESULT hr = S_OK;
-    releaseCallStoreMulti(hr, pPD->GetStreamDescriptorByIndex, IMFStreamDescriptor, pSD, iStream, &fSelected); //obtains the stream descripter. fSelected shows whether or not the stream has been selected.
+    hr = pPD->GetStreamDescriptorByIndex(iStream, &fSelected, &pSD); //obtains the stream descripter. fSelected shows whether or not the stream has been selected.
     if (FAILED(hr))
         return hr;
 
     if (fSelected) { //if the stream is selected
-        releaseCallStoreMulti(hr, CreateMediaSinkActivate, IMFActivate, pSinkActivate, pSD); //creates the media sink activation object
+        hr = CreateMediaSinkActivate(pSD, &pSinkActivate); //creates the media sink activation object
         if (FAILED(hr))
             return hr;
 
-        releaseCallStoreMulti(hr, AddSourceNode, IMFTopologyNode, pSourceNode, pTopology, pSource, pPD, pSD); //adds the source node for the stream
+        hr = AddSourceNode(pTopology, pSource, pPD, pSD, &pSourceNode); //adds the source node for the stream
         if (FAILED(hr))
             return hr;
 
-        releaseCallStoreMulti(hr, AddOutputNode, IMFTopologyNode, pOutputNode, pTopology, pSinkActivate, 0); //adds the output node for the renderer
+        hr = AddOutputNode(pTopology, pSinkActivate, 0, &pOutputNode); //adds the output node for the renderer
         if (FAILED(hr))
             return hr;
 
@@ -264,7 +257,7 @@ HRESULT Alerter::CreateMediaSinkActivate(IMFStreamDescriptor* pSourceSD, IMFActi
     IMFActivatePtr pActivate(0);
 
     HRESULT hr = S_OK;
-    releaseCallStoreSingle(hr, pSourceSD->GetMediaTypeHandler, IMFMediaTypeHandler, pHandler); //gets the media type handler for the source stream.
+    hr = pSourceSD->GetMediaTypeHandler(&pHandler); //gets the media type handler for the source stream.
     if (FAILED(hr))
         return hr;
 
@@ -274,7 +267,7 @@ HRESULT Alerter::CreateMediaSinkActivate(IMFStreamDescriptor* pSourceSD, IMFActi
         return hr;
 
     if (MFMediaType_Audio == guidMajorType) //if the major type is audio
-        {releaseCallStoreSingle(hr, MFCreateAudioRendererActivate, IMFActivate, pActivate);} //creates the audio activate
+        hr = MFCreateAudioRendererActivate(&pActivate); //creates the audio activate
     else { //includes video too by the way
         hr = E_FAIL; //fails the thing. I can't deleselect a stream unless I have the presentation descriptor.
     }
@@ -289,7 +282,7 @@ HRESULT Alerter::AddSourceNode(IMFTopology *pTopology, IMFMediaSource *pSource, 
     HRESULT hr = S_OK;
 
     //Creates an empty node
-    releaseCallStoreMulti(hr, MFCreateTopologyNode, IMFTopologyNode, pNode, MF_TOPOLOGY_SOURCESTREAM_NODE);
+    hr = MFCreateTopologyNode(MF_TOPOLOGY_SOURCESTREAM_NODE, &pNode);
     if (FAILED(hr))
         return hr;
 
@@ -321,7 +314,7 @@ HRESULT Alerter::AddOutputNode(IMFTopology *pTopology, IMFActivate *pActivate, D
     HRESULT hr = S_OK;
 
     //Creates an empty node
-    releaseCallStoreMulti(hr, MFCreateTopologyNode, IMFTopologyNode, pNode, MF_TOPOLOGY_OUTPUT_NODE);
+    hr = MFCreateTopologyNode(MF_TOPOLOGY_OUTPUT_NODE, &pNode);
     if (FAILED(hr))
         return hr;
 
@@ -354,7 +347,7 @@ HRESULT Alerter::CreateSession() {
     if (FAILED(hr))
         return hr;
 
-    releaseCallStoreMulti(hr, MFCreateMediaSession, IMFMediaSession, m_pSession, NULL); //creates the media session
+    hr = MFCreateMediaSession(NULL, &m_pSession); //creates the media session
     if (FAILED(hr))
         return hr;
 
@@ -379,20 +372,23 @@ HRESULT Alerter::StopSession() {
                 return -1; //it failed, and I'm too lazy to find proper error codes to use
             }
         }
+    }
 
-        if (SUCCEEDED(hr)) {
-            if (m_pSource)
-                m_pSource->Shutdown(); //shuts down the media source
-
-            if (m_pSession)
-                m_pSession->Shutdown(); //shuts downs the media session
+    if (SUCCEEDED(hr)) {
+        if (m_pSource) {
+            m_pSource->Shutdown(); //shuts down the media source
+            m_pSource.Release();
+            m_pSource = nullptr;
         }
 
-        m_pSource.Release();
-        m_pSession.Release();
-        m_mediaState = CLOSED;
-        return hr;
+        if (m_pSession) {
+            m_pSession->Shutdown(); //shuts down the media session
+            m_pSession.Release();
+            m_pSession = nullptr;
+        }
     }
+
+    m_mediaState = CLOSED;
     return hr;
 }
 
@@ -464,11 +460,11 @@ HRESULT Alerter::OnNewPresentation(IMFMediaEvent *pEvent) {
     IMFTopologyPtr pTopology(0);
     HRESULT hr = S_OK;
 
-    releaseCallStoreMulti(hr, GetEventObject, IMFPresentationDescriptor, pPD, pEvent); //obtains the event object (a presentation descriptor), which is called by SetObject()
+    hr = GetEventObject(pEvent, &pPD); //obtains the event object (a presentation descriptor), which is called by SetObject()
     if (FAILED(hr))
         return hr;
 
-    releaseCallStoreMulti(hr, CreatePlaybackTopology, IMFTopology, pTopology, m_pSource, pPD); //create a partial topology
+    hr = CreatePlaybackTopology(m_pSource, pPD, &pTopology); //create a partial topology
     if (FAILED(hr))
         return hr;
 
@@ -524,30 +520,30 @@ bool Alerter::setSoundFile<std::wstring>(std::wstring path) {
     /* Create a Media Session */
     HRESULT hr = CreateSession();
     if (FAILED(hr)) //failed just checks if hr < 0
-        return hr;
+        return false;
 
     /* Creating the media source from the object */
-    releaseCallStoreMulti(hr, CreateMediaSource, IMFMediaSource, m_pSource, path.c_str());
+    hr = CreateMediaSource(path.c_str(), &m_pSource);
     if (FAILED(hr))
-        return hr;
+        return false;
 
     /* Create the presentation descriptor */
-    releaseCallStoreSingle(hr, m_pSource->CreatePresentationDescriptor, IMFPresentationDescriptor, pSourcePD);
+    hr = m_pSource->CreatePresentationDescriptor(&pSourcePD);
     if (FAILED(hr))
-        return hr;
+        return false;
 
     /* Create a partial topology (I don't have the complete nodes) */
-    releaseCallStoreMulti(hr, CreatePlaybackTopology, IMFTopology, pTopology, m_pSource, pSourcePD);
+    hr = CreatePlaybackTopology(m_pSource, pSourcePD, &pTopology);
     if (FAILED(hr))
-        return hr;
+        return false;
 
     /* Set the topology on the media session */
     hr = m_pSession->SetTopology(0, pTopology); //sets the topology of the session
     if (FAILED(hr))
-        return hr;
+        return false;
 
     m_mediaState = OPEN_PENDING;
-    return hr;
+    return true;
 }
 
 template <>

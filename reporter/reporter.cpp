@@ -3,7 +3,7 @@
 #include <iostream>
 #include <condition_variable>
 
-Reporter::Reporter(const WeatherStation& ws, const Alerter& alert) : m_ws(ws), m_alert(alert), m_sleepSeconds(0), m_break(false), m_reporterStatus(false), threadedCycle() {
+Reporter::Reporter(const WeatherStation& ws, Alerter&& alert) : m_ws(ws), m_alert(std::move(alert)), m_sleepSeconds(0), m_break(false), m_reporterStatus(false), threadedCycle() {
     if (m_ws.getAPIKey().empty() || m_ws.getLocation().empty())
         throw std::runtime_error("Empty API Keys or Empty Locations are not allowed.");
 }

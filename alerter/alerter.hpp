@@ -15,27 +15,6 @@
 #include "comip.h"
 #include "Unknwn.h"
 
-//_com_ptr_t release the pointer when operator& is called. Need to reattach it after we use it.
-// Use this definition if working with pointer to pointer COM interfaces, and the function to be called has multiple arguments
-#define releaseCallStoreMulti(hr, func, ptrType, smart_ptr, ...) \
-        {  ptrType** _ptr = nullptr; \
-        if (smart_ptr != nullptr) \
-            _ptr = &smart_ptr; \
-        else _ptr = new ptrType*(0); \
-        hr = func(__VA_ARGS__, _ptr); \
-        smart_ptr.Attach(*_ptr, false); \
-        _ptr = nullptr; }
-
-// Use this definition if workign with poitner to pointer COM interfaces, and the function only accepts the pointer as an argument
-#define releaseCallStoreSingle(hr, func, ptrType, smart_ptr) \
-        {  ptrType** _ptr = nullptr; \
-        if (smart_ptr != nullptr) \
-            _ptr = &smart_ptr; \
-        else _ptr = new ptrType*(0); \
-        hr = func(_ptr); \
-        smart_ptr.Attach(*_ptr, false); \
-        _ptr = nullptr; }
-
 // Some typedefs for smart pointers
 _COM_SMARTPTR_TYPEDEF(IMFSourceResolver, IID_IMFSourceResolver);
 _COM_SMARTPTR_TYPEDEF(IUnknown, IID_IUnknown);
@@ -95,7 +74,8 @@ enum AlertReturnCode : short {
 class Alerter final : public IMFAsyncCallback {
     public:
     Alerter(HWND eventWindow);
-    Alerter(const Alerter&);
+    Alerter(const Alerter&)=delete;
+    Alerter(Alerter&&);
     ~Alerter();
 
     /* Error Handling */

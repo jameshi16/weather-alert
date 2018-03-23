@@ -18,7 +18,7 @@ class Reporter {
     public:
     Reporter()=delete;
 
-    Reporter(const WeatherStation& ws, const Alerter& alert);
+    Reporter(const WeatherStation& ws, Alerter&& alert);
     Reporter(const Reporter&)=delete;
     virtual ~Reporter();
 

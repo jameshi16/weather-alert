@@ -15,6 +15,10 @@ bool WeatherStation::requestData(std::wstring APIKey, std::wstring Location) {
     m_APIKey = APIKey;
     m_Location = Location;
 
+    #ifndef NDEBUG
+    if (APIKey != L"x") {
+    #endif
+
     /* Connect and obtain data */
     if (contact.contact(L"JamesLab Softwares", //agent
                         OPENWEATHERMAP_URL, //url
@@ -29,6 +33,10 @@ bool WeatherStation::requestData(std::wstring APIKey, std::wstring Location) {
 
     /* Decodes data */
     jd.decode(contact.getData()); //decodes the data. TODO: This is incomplete, JsonDecoder has not much error handling yet.
+
+    #ifndef NDEBUG
+    }
+    #endif
 
     #ifndef NDEBUG
     if (Location == L"debug:rain")

@@ -1,4 +1,6 @@
 #include <iostream>
+#include <chrono>
+#include <thread>
 
 //Windows Headers
 #include "windows.h"
@@ -6,6 +8,7 @@
 
 #include "weatherInfo/weatherStation.hpp"
 #include "WeatherDlg.hpp"
+#include "alerter/alerter.hpp"
 
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
     WeatherDialog wd(hInstance, _T("Weather Alert"), nShowCmd);
@@ -19,7 +22,5 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         DispatchMessage(&msg);
     }
 
-    int x;
-    std::cin >> x;
     return 0;
 }
