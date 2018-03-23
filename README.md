@@ -8,6 +8,7 @@ Well, worry no more! _Weather Alert App_ is for you!
 > Stranger, 2018
 
 Note: The above is satire.
+Note: If you are on GitHub, then you are looking at the mirror repository. Check [GitLab](https://gitlab.com/jameshi16/weather-alert/) for the real repository.
 
 ---
 
