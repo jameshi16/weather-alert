@@ -10,6 +10,12 @@
 #include "weatherInfo/weatherInfo.hpp"
 #include "reporter/reporter.hpp"
 
+#ifdef _WIN64
+#define _GWL_HINSTANCE GWLP_HINSTANCE
+#else
+#define _GWL_HINSTANCE GWL_HINSTANCE
+#endif
+
 LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hwndAPIEdit;
     static HWND hwndLOCEdit;
@@ -31,7 +37,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                                         0, 10, 500, 20, 
                                         hwnd,
                                         (HMENU) APIKEY_TEXTBOX,
-                                        (HINSTANCE) GetWindowLong(hwnd, GWL_HINSTANCE),
+                                        (HINSTANCE) GetWindowLong(hwnd, _GWL_HINSTANCE),
                                         NULL);
 
             hwndLOCEdit = CreateWindowEx(0, _T("EDIT"),
@@ -40,7 +46,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                                         0, 30, 500, 20,
                                         hwnd,
                                         (HMENU) LOCATION_TEXTBOX,
-                                        (HINSTANCE) GetWindowLong(hwnd, GWL_HINSTANCE),
+                                        (HINSTANCE) GetWindowLong(hwnd, _GWL_HINSTANCE),
                                         NULL);
 
             hwndButton = CreateWindow(_T("BUTTON"),
@@ -49,7 +55,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                                     10, 50, 100, 20,
                                     hwnd,
                                     (HMENU) BUTTON_SET,
-                                    (HINSTANCE) GetWindowLong(hwnd, GWL_HINSTANCE),
+                                    (HINSTANCE) GetWindowLong(hwnd, _GWL_HINSTANCE),
                                     NULL);
 
             hwndHideButton = CreateWindow(_T("BUTTON"),
@@ -58,7 +64,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                                         380, 0, 100, 20,
                                         hwnd,
                                         (HMENU) BUTTON_HIDE,
-                                        (HINSTANCE) GetWindowLong(hwnd, GWL_HINSTANCE),
+                                        (HINSTANCE) GetWindowLong(hwnd, _GWL_HINSTANCE),
                                         NULL);
 
             SendMessage(hwndAPIEdit, WM_SETTEXT, 0, (LPARAM) _T("API Key here"));
@@ -102,7 +108,7 @@ LRESULT CALLBACK WeatherDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     nid.uFlags = NIF_ICON | NIF_MESSAGE;
                     nid.uCallbackMessage = WM_SYSTEMTRAY;
                     nid.uVersion = 4;
-                    nid.hIcon = reinterpret_cast<HICON>(LoadImage(reinterpret_cast<HINSTANCE>(GetWindowLong(hwnd, GWL_HINSTANCE)), "appIcon", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
+                    nid.hIcon = reinterpret_cast<HICON>(LoadImage(reinterpret_cast<HINSTANCE>(GetWindowLong(hwnd, _GWL_HINSTANCE)), _T("appIcon"), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
 
                     if (!Shell_NotifyIcon(NIM_ADD, &nid))
                         std::cerr << "Unable to create system tray icon." << std::endl;
@@ -150,7 +156,7 @@ WeatherDialog::WeatherDialog(HINSTANCE hInstance, LPCTSTR windowTitle, int nCmdS
     wcex.cbClsExtra     = 0; //do not need extra bytes
     wcex.cbWndExtra     = 0; //do I need any extra bytes for the window?
     wcex.hInstance      = hInstance; //the instance calling the window
-    wcex.hIcon          = reinterpret_cast<HICON>(LoadImage(hInstance, "appIcon", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
+    wcex.hIcon          = reinterpret_cast<HICON>(LoadImage(hInstance, _T("appIcon"), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
     wcex.hCursor        = reinterpret_cast<HCURSOR>(LoadImage(NULL, IDC_ARROW, IMAGE_CURSOR, 0, 0, LR_DEFAULTSIZE));
     wcex.hbrBackground  = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     wcex.lpszMenuName   = NULL; //no default menu
